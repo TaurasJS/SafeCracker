@@ -1,0 +1,127 @@
+module SafeCrackerStd
+exports all
+definitions 
+
+--@doc R1 represent the safe cracker generally (e.g. N wheels and M spokes) 
+--@doc R1.1 instantiate the safe cracker to specific configuration 
+--@doc R1.2 instantiate the wheels (4) and spokes (16) 
+
+--@doc R2 find the safe combination/configuration to open the safe
+--@doc R3 ensure that at least one combination exists
+--@doc R4 capture the safe properties in your design
+--@doc R5 ensure that the safe development is satisfiable
+--@doc R5.1 write traces to that effect
+--@doc R5.2 discharge proof obligations
+
+values
+	MAX_WHEELS: nat1 = 4;
+	MAX_SPOKES: nat1 = 16;
+	SECRET_SUM: nat1 = 40;
+	
+types
+
+	Value = nat1
+	--@todo what about other wheels? what if it goes beyond 40 when summing? 
+	inv v == v <= SECRET_SUM - MAX_WHEELS + 1;
+	
+	Spokes = nat1 
+	--@todo how many spokes are possible?
+	inv s == s <= MAX_SPOKES;
+	
+	Wheel = ?;
+	--@todo would you need to represent the wheels in combination?
+	--Wheels = set of Wheel;
+	
+	--Overlay = ?;
+	--@todo depending on design decisions you may need a notion of Overlay?  
+	
+	Safe = ?
+	inv s == true;--???
+	
+	--@todo a safe is not a combination; but a combination is part of a safe? 
+	Combination = Safe
+	inv c == true;--???
+	
+functions
+
+	sum_values: ? -> Value
+	sum_values(x) == 
+		--@todo 
+		is not yet specified;
+
+	initial_safe: () -> Safe
+	initial_safe() == 
+		--@todo
+		is not yet specified
+	pre
+		--@todo
+		true
+	post
+		--@todo
+		true;
+		
+	--@doc realises requirement R3
+	combinations: Safe -> set of Combination
+	combinations(s) ==
+		--@todo
+		is not yet specified;	
+
+	valid_safe: Safe -> bool
+	valid_safe(s) == 
+		combinations(s) <> {};
+
+
+---------------------------------------------------------------------------------------------------------------------
+--@doc you don't need the part below; it's useful for those who struggle with functions alone!
+---------------------------------------------------------------------------------------------------------------------
+
+state State of
+	safe: [Safe]
+	sum: Value
+inv mk_State(safe, sum) == 
+	--@todo document system invariants
+	sum <= SECRET_SUM
+init s == 
+	--@todo choose adequate initialisation: nil will fail invariant. 
+	s = mk_State(nil, SECRET_SUM)  
+end
+
+operations
+
+--@doc resets safe to initial positon
+resetSafe() == 
+	(safe := nil)
+ext wr safe
+post safe = nil;
+	
+--@doc configures the safe to a specific initial value
+configureSafe(s: Safe) == 
+	--@todo
+	is not yet specified
+ext wr safe
+pre
+	--@todo
+	true 
+post 
+	safe = s;
+
+openSafe() c: Combination ==
+	--@todo 
+	is not yet specified
+ext rd safe
+pre
+	--@todo
+	true
+post
+	--@todo
+	true;
+
+revealValues(c: Combination) r: ? ==
+	is not yet specified
+ext rd safe;
+	
+--@todo
+traces
+
+
+end SafeCrackerStd
