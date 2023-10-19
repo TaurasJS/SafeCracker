@@ -10,14 +10,29 @@ definitions
 --@doc R3 ensure that at least one combination exists
 --@doc R4 capture the safe properties in your design
 --@doc R5 ensure that the safe development is satisfiable
---@doc R5.1 write traces to that effect
---@doc R5.2 discharge proof obligations
+
+--@doc suggested configuration with certain openning combination
+--	   this also suggests a fixed notion of spokes (i.e. where is 1st spoke)?
+--	   OUTER = 27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10
+--	   MID1  =  5,  9, 10,  2,  6,  1, 27, 10, 10,  6,  6,  9,  3,  3,  8,  3
+--	   MID2  = 10, 17,  5, 19,  4,  3, 15, 13, 17, 10,  2, 20, 15,  6,  2, 10
+--     INNER = 10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24
+--
+--	   certain wheels have overlays over intermitent spokes
+--	   again this requires a notion of spoke positioning 
+--	   MID1_OVERLAY  = 10,  2, 12, 17, 16, 9, 9, 15
+--	   MID2_OVERLAY  =  1, 22,  6, 24, 24, 7, 5, 27
+--     INNER_OVERLAY =  5,  4,  6,  6, 10, 1, 6,  4	
+--
+--	   secret sum is 40, yet also a game parameter
 
 values
 	MAX_WHEELS: nat1 = 4;
 	MAX_SPOKES: nat1 = 16;
 	SECRET_SUM: nat1 = 40;
 	
+	--OUTER: Wheel = [27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10];
+
 types
 
 	Value = nat1
@@ -28,20 +43,29 @@ types
 	--@todo how many spokes are possible?
 	inv s == s <= MAX_SPOKES;
 	
-	Wheel = ?;
+	Wheel = seq of Value
+	inv w == len w = MAX_SPOKES; -- length of wheel must be equal to max spokes for the integrity of the game
+
+	Overwheel = seq of Value
+	inv ow == len ow = (MAX_SPOKES/2); -- length of overlay wheel must be equal to half of MAX_SPOKES for the integrity of the game
 	--@todo would you need to represent the wheels in combination?
-	--Wheels = set of Wheel;
+	Wheels = set of Wheel
+	inv ws == card ws <= MAX_WHEELS; -- ammount of wheels must be equal or less to the MAX_WHEELS
 	
-	--Overlay = ?;
-	--@todo depending on design decisions you may need a notion of Overlay?  
+	--@todo depending on design decisions you may need a notion of Overlay?
+	Overlay = set of Overwheel
+	inv ovl == card ovl <= MAX_WHEELS;
 	
-	Safe = ?
-	inv s == true;--???
+	-- Safe = set of Overwheel * set of Wheels
+	-- inv s == card s.#1 <= card s.#2;
 	
+	Safe = set of Overlay * set of Wheels
+	inv mk_(o, w) == card o = card w-1;
+
 	--@todo a safe is not a combination; but a combination is part of a safe? 
 	Combination = Safe
 	inv c == true;--???
-	
+
 functions
 
 	sum_values: ? -> Value
@@ -64,23 +88,28 @@ functions
 	combinations: Safe -> set of Combination
 	combinations(s) ==
 		--@todo
-		is not yet specified;	
+		is not yet specified
+	pre true --@todo
+	post true;--@todo
 
 	valid_safe: Safe -> bool
 	valid_safe(s) == 
 		combinations(s) <> {};
 
 
----------------------------------------------------------------------------------------------------------------------
---@doc you don't need the part below; it's useful for those who struggle with functions alone!
----------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
+--@doc you don't need the part below; 
+--     it's useful for those who struggle with functions alone!
+--------------------------------------------------------------------------------------
 
 state State of
 	safe: [Safe]
-	sum: Value
-inv mk_State(safe, sum) == 
+	sum: nat1
+inv mk_State(-, sum) == 
 	--@todo document system invariants
 	sum <= SECRET_SUM
+	--and 
+	--(safe <> nil => valid_safe(safe))
 init s == 
 	--@todo choose adequate initialisation: nil will fail invariant. 
 	s = mk_State(nil, SECRET_SUM)  
