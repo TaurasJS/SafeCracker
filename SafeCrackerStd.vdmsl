@@ -31,33 +31,15 @@ values
 	MAX_SPOKES: nat1 = 16;
 	SECRET_SUM: nat1 = 40;
 	
-	GOOD_SAFE: Safe = mk_Safe ( -- FIX THIS
-		mk_Overlay(
-			--INNER_OVERLAy
-			[10, <Empty>, 2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>],
-			--MID1_OVERLAY
-			[1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24, <Empty>, 7, <Empty>, 5, <Empty>, 27,<Empty>],
-			--MID2_OVERLAY
-			[5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>, 6, <Empty>, 4, <Empty>]
-		),
-		mk_Wheels(
-			--INNER
-			[10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24],
-			--MID1
-			[10, 17,  5, 19,  4,  3, 15, 13, 17, 10,  2, 20, 15,  6,  2, 10],
-			--MID2
-			[5,  9, 10,  2,  6,  1, 27, 10, 10,  6,  6,  9,  3,  3,  8,  3],
-			--OUTER
-			[27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10]
-		)
-	);
-	
-
 types
 
 	Value = nat1
 	--@todo what about other wheels? what if it goes beyond 40 when summing? 
 	inv v == v <= SECRET_SUM - MAX_WHEELS + 1;
+
+	OverValue = nat1 | <Empty>
+	--@todo what about other wheels? what if it goes beyond 40 when summing? 
+	inv v == v <= SECRET_SUM - MAX_WHEELS + 1 or v = <Empty>;
 
 	Rotate = nat
 	inv r == r <= MAX_SPOKES and r >= 0;
@@ -69,25 +51,53 @@ types
 	Wheel = seq of Value
 	inv w == len w = MAX_SPOKES; -- length of wheel must be equal to max spokes for the integrity of the game
 
-	Overwheel = seq of Value
-	inv ow == len ow = MAX_SPOKES; -- length of overlay wheel must be equal to half of MAX_SPOKES for the integrity of the game
+	Overwheel = seq of OverValue
+	inv ow == len ow = MAX_SPOKES; -- length of overlay wheel of non empty values is equal to MAX_SPOKES, half of them are filled out as <Empty>
 	--@todo would you need to represent the wheels in combination?
-	Wheels = set of Wheel
-	inv ws == card ws <= MAX_WHEELS; -- ammount of wheels must be equal or less to the MAX_WHEELS
+	Wheels = seq of Wheel
+	inv ws == len ws <= MAX_WHEELS; -- ammount of wheels must be equal or less to the MAX_WHEELS
 	
 	--@todo depending on design decisions you may need a notion of Overlay?
-	Overlay = set of Overwheel
-	inv ovl == card ovl < MAX_WHEELS;
+	Overlay = seq of Overwheel
+	inv ovl == len ovl < MAX_WHEELS;
 	
 	-- Safe = set of Overwheel * set of Wheels
 	-- inv s == card s.#1 <= card s.#2;
 	
-	Safe = set of Overlay * set of Wheels
-	inv mk_(o, w) == card o = card w-1;
+	Safe = Overlay * Wheels
+	inv mk_(o, w) == len o = len w-1;
 
 	--@todo a safe is not a combination; but a combination is part of a safe? 
-	Combination = Safe
-	inv c == true;--???
+	--in my case combinationn is 4 sequences of wheels that we would see if we saw the safe cracker puzzle from top-down. (wheels and overhweels combined).
+	Combination = Wheels
+	inv c == len c = 4;--???
+
+	Rotations =  seq of Rotate
+	inv r == len r = 3; -- First OUTER and MID2 don't rotate. Rotations are how many times other circle combinations (of inner and outer connected layers) were roateted, max 16 times.
+
+values
+	--GOOD_SAFE.#1(1) = 				[10, <Empty>, 2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>],
+
+	GOOD_SAFE: Safe = mk_(
+			[
+				--INNER_OVERLAy
+				[10, <Empty>, 2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>],
+				--MID1_OVERLAY
+				[1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24, <Empty>, 7, <Empty>, 5, <Empty>, 27,<Empty>],
+				--MID2_OVERLAY
+				[5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>, 6, <Empty>, 4, <Empty>]
+			],
+			[
+				--INNER
+				[10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24],
+				--MID1
+				[10, 17,  5, 19,  4,  3, 15, 13, 17, 10,  2, 20, 15,  6,  2, 10],
+				--MID2
+				[5,  9, 10,  2,  6,  1, 27, 10, 10,  6,  6,  9,  3,  3,  8,  3],
+				--OUTER
+				[27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10]
+			]
+		);
 
 functions
 
@@ -144,7 +154,7 @@ operations
 resetSafe() == 
 	(safe := nil)
 ext wr safe
-post safe = nil;
+post safe = GOOD_SAFE;
 	
 --@doc configures the safe to a specific initial value
 configureSafe(s: Safe) == 
