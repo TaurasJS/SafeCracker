@@ -37,6 +37,9 @@ types
 	--@todo what about other wheels? what if it goes beyond 40 when summing? 
 	inv v == v <= SECRET_SUM - MAX_WHEELS + 1;
 
+	Collumnsum = nat1
+	inv c == c <= SECRET_SUM;
+
 	OverValue = nat1 | <Empty>
 	--@todo what about other wheels? what if it goes beyond 40 when summing? 
 	inv v == v <= SECRET_SUM - MAX_WHEELS + 1 or v = <Empty>;
@@ -101,10 +104,17 @@ values
 
 functions
 
-	sum_values: ? -> Value
-	sum_values(x) == 
-		--@todo 
-		is not yet specified;
+
+	--Following function sums up values of one collumn in a combination (Top down view of safe).
+	--It takes a Combination and a natural number for the collumn to sum up.
+	--Values for that collumn are summed up.
+	sum_collumn: Combination * nat1 -> nat1
+	sum_collumn(c, cn) == c(1).(cn); -- ASK HOW TO REACH A VALUE THAT IS IN A SEQUENCE THAT IS IN ANOTHER SEQUENCE
+
+	check_values: Combination -> bool
+	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
+		
+			
 
 	initial_safe: () -> Safe
 	initial_safe() == 
