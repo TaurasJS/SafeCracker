@@ -42,7 +42,7 @@ types
 
 	OverValue = nat1 | <Empty>
 	--@todo what about other wheels? what if it goes beyond 40 when summing? 
-	inv v == v <= SECRET_SUM - MAX_WHEELS + 1 or v = <Empty>;
+	inv v == v = <Empty> or v <= SECRET_SUM - MAX_WHEELS + 1;
 
 	Rotate = nat
 	inv r == r <= MAX_SPOKES and r >= 0;
@@ -90,6 +90,8 @@ values
 				--MID2_OVERLAY
 				[5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>, 6, <Empty>, 4, <Empty>]
 			],
+			-- seq of seq of Value
+			-- <= 4   = 16   
 			[
 				--INNER
 				[10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24],
@@ -102,6 +104,24 @@ values
 			]
 		);
 
+		--Starting combination is equal to the default 4 wheels of safe. Just for the clarity. Not actual values
+		--Only OUTER wheel is correct because it is not touched in my functions.
+		STARTING_COMBINATION: Combination =(
+			[
+				--INNER
+				[10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24],
+				--MID1
+				[10, 17,  5, 19,  4,  3, 15, 13, 17, 10,  2, 20, 15,  6,  2, 10],
+				--MID2
+				[5,  9, 10,  2,  6,  1, 27, 10, 10,  6,  6,  9,  3,  3,  8,  3],
+				--OUTER
+				[27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10]
+			]
+		);
+
+	OVERLAY_SAFE_INDEX: nat1 = 1;
+	WHEEL_SAFE_INDEX: nat1 = 2;
+
 functions
 
 
@@ -109,17 +129,55 @@ functions
 	--It takes a Combination and a natural number for the collumn to sum up.
 	--Values for that collumn are summed up.
 	sum_collumn: Combination * nat1 -> nat1
-	sum_collumn(c, cn) == c(1).(cn); -- ASK HOW TO REACH A VALUE THAT IS IN A SEQUENCE THAT IS IN ANOTHER SEQUENCE
-
+	sum_collumn(c, cn) == 
+		let 
+			x: Value = c(1)(cn),
+			y: Value = c(2)(cn),
+			z: Value = c(3)(cn),
+			w: Value = c(4)(cn)
+		in 
+			x + y + z + w;
+	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
+	--Returns True if it is.
 	check_values: Combination -> bool
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
-		
+
+	safe_to_combination: Safe -> Combination
+	safe_to_combination(s) ==
+		let
+			combo: Combination = STARTING_COMBINATION, -- recursion or comprehensions
+
+			for i = 1 to MAX_WHEELS-1 by 1 do
+				for j = 1 to MAX_SPOKES by 1 do
+					if s.#1(i)(j) <> <Empty> 
+					then 
+						combo(i)(j) = s.#1(i)(j)
+					else
+						combo(i)(j) = s.#2(i)(j)
+		in
+			combo;
+			
+
+	f: seq of seq of int -> seq of int 
+	f(s) == 
+		let 
+			inner: Wheel = s(2)(1),
+		    mid1 : Wheel = s(2)(2) 
+		in
+			inner ^ mid1   ;
+
+	f(s) == s(2)(1) ^ s(2)(2)
+
+	g: set1 of int -> int 
+	g(s) == 
+		let x in set s 
+			be st (forall i in set s \ {x} & x <= i) 
+		 in 
+		 	x;
 			
 
 	initial_safe: () -> Safe
-	initial_safe() == 
-		--@todo
-		is not yet specified
+	initial_safe() == GOOD_SAFE -- maybe, useless. Consider deleting function.
 	pre
 		--@todo
 		true
@@ -145,55 +203,71 @@ functions
 --     it's useful for those who struggle with functions alone!
 --------------------------------------------------------------------------------------
 
-state State of
-	safe: [Safe]
-	sum: nat1
-inv mk_State(-, sum) == 
-	--@todo document system invariants
-	sum <= SECRET_SUM
-	--and 
-	--(safe <> nil => valid_safe(safe))
-init s == 
-	--@todo choose adequate initialisation: nil will fail invariant. 
-	s = mk_State(nil, SECRET_SUM)  
+-- state State of
+-- 	safe: [Safe]
+-- 	sum: nat1
+-- inv mk_State(-, sum) == 
+-- 	--@todo document system invariants
+-- 	sum <= SECRET_SUM
+-- 	--and 
+-- 	--(safe <> nil => valid_safe(safe))
+-- init s == 
+-- 	--@todo choose adequate initialisation: nil will fail invariant. 
+-- 	s = mk_State(nil, SECRET_SUM)  
+-- end
+
+state S of 
+	x: nat 
+init s == s = mk_S(0)
 end
 
 operations
 
---@doc resets safe to initial positon
-resetSafe() == 
-	(safe := nil)
-ext wr safe
-post safe = GOOD_SAFE;
-	
---@doc configures the safe to a specific initial value
-configureSafe(s: Safe) == 
-	--@todo
-	is not yet specified
-ext wr safe
-pre
-	--@todo
-	true 
-post 
-	safe = s;
+myloop(s: Safe) r: Combination == -- Example 
+	(dcl comb: Combination := STARTING_COMBINATION;
+		while (i > 10) do
+		(
+			i   := i - 1;
+			comb  := res + i;
+		);
+		return res;
+	);
 
-openSafe() c: Combination ==
-	--@todo 
-	is not yet specified
-ext rd safe
-pre
-	--@todo
-	true
-post
-	--@todo
-	true;
 
-revealValues(c: Combination) r: ? ==
-	is not yet specified
-ext rd safe;
+-- --@doc resets safe to initial positon
+-- resetSafe() == 
+-- 	(safe := nil)
+-- ext wr safe
+-- post safe = GOOD_SAFE;
 	
---@todo
-traces
+-- --@doc configures the safe to a specific initial value
+-- configureSafe(s: Safe) == 
+-- 	--@todo
+-- 	is not yet specified
+-- ext wr safe
+-- pre
+-- 	--@todo
+-- 	true 
+-- post 
+-- 	safe = s;
+
+-- openSafe() c: Combination ==
+-- 	--@todo 
+-- 	is not yet specified
+-- ext rd safe
+-- pre
+-- 	--@todo
+-- 	true
+-- post
+-- 	--@todo
+-- 	true;
+
+-- revealValues(c: Combination) r: ? ==
+-- 	is not yet specified
+-- ext rd safe;
+	
+-- --@todo
+-- traces
 
 
 end SafeCrackerStd
