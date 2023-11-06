@@ -142,23 +142,12 @@ functions
 	check_values: Combination -> bool
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
 
-	safe_to_combination: Safe -> Combination
-	safe_to_combination(s) ==
-		let
-			combo: Combination = STARTING_COMBINATION, -- recursion or comprehensions
+	safe_to_combination: Safe * Combination -> Combination 
+	safe_to_combination(s, c) == SafeTocombinationFull(s, c, 1);
+		
+-- ASK DURING PRACTICAL: Why is it impure operation if it is a recursive one?
 
-			for i = 1 to MAX_WHEELS-1 by 1 do
-				for j = 1 to MAX_SPOKES by 1 do
-					if s.#1(i)(j) <> <Empty> 
-					then 
-						combo(i)(j) = s.#1(i)(j)
-					else
-						combo(i)(j) = s.#2(i)(j)
-		in
-			combo;
-			
-
-	f: seq of seq of int -> seq of int 
+	/*f: seq of seq of int -> seq of int 
 	f(s) == 
 		let 
 			inner: Wheel = s(2)(1),
@@ -174,6 +163,7 @@ functions
 			be st (forall i in set s \ {x} & x <= i) 
 		 in 
 		 	x;
+	*/
 			
 
 	initial_safe: () -> Safe
@@ -223,14 +213,63 @@ end
 
 operations
 
-myloop(s: Safe) r: Combination == -- Example 
-	(dcl comb: Combination := STARTING_COMBINATION;
-		while (i > 10) do
-		(
-			i   := i - 1;
-			comb  := res + i;
-		);
-		return res;
+/*SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
+	(
+		dcl comb: Combination := STARTING_COMBINATION;
+
+		for i = 1 to MAX_WHEELS-1 by 1 do
+				for j = 1 to MAX_SPOKES by 1 do
+					if s.#1(i)(j) <> <Empty> 
+					then( 
+						comb(i)(j) := s.#1(i)(j)
+					)
+					else
+						comb(i)(j) := s.#2(i)(j);
+		return comb;
+	);*/
+
+SafeTocombinationFull(s: Safe, c: Combination, n: nat1) r: Combination ==
+	(
+		-- ASK ABOUT ERRORS WHEN USING s RECURSIVE FUNCTIONS
+		-- Requires pre condition that c = STARTING_COMBINATION
+		-- Requires pre condition that n = 1
+		dcl placementcomb: Combination := c; -- placement Combination to avoid errors. Will be returned after recursion is done
+
+		if n = MAX_WHEELS-1 
+		then( 
+			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1);
+			return placementcomb;
+		)
+		else
+			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1);
+			return SafeTocombinationFull(s, placementcomb, n+1);
+	);
+
+SafeToCombinationLine(w: Wheel, ow: Overwheel, n: nat1) r: Wheel ==
+	(
+		-- Requires pre condition that n = 1
+		dcl placement: Wheel := w; -- placement wheel to avoid errors. Will be returned after recursion is done
+
+		if n = MAX_SPOKES 
+		then( -- If last recursion
+			if ow(n) <> <Empty> 
+			then 
+				(
+					placement(n) := ow(n);
+					return placement;
+				) 
+			else
+				return placement;
+		)
+		else
+			if ow(n) <> <Empty> 
+			then 
+				(
+					placement(n) := ow(n);
+					return SafeToCombinationLine(placement, ow, n+1);
+				) 
+			else
+				return SafeToCombinationLine(placement, ow, n+1);
 	);
 
 
