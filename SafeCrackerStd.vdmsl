@@ -143,8 +143,17 @@ functions
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
 
 	safe_to_combination: Safe * Combination -> Combination 
-	safe_to_combination(s, c) == SafeTocombinationFull(s, c, 1);
-		
+	safe_to_combination(s, c) == SafeTocombinationFull(s, c, 1); --ASK ABOUT
+
+	Turn: Wheel | Overwheel -> Wheel | Overwheel
+	Turn(line) ==
+	--This function will be used twice in a row, since when a wheel is turned so does it's connected overwheel
+		let
+			number: seq of nat1 | <Empty> = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
+			newline: seq of nat1 | <Empty> = tl line
+		in
+			newline^number;
+
 -- ASK DURING PRACTICAL: Why is it impure operation if it is a recursive one?
 
 	/*f: seq of seq of int -> seq of int 
@@ -237,7 +246,7 @@ SafeTocombinationFull(s: Safe, c: Combination, n: nat1) r: Combination ==
 
 		if n = MAX_WHEELS-1 
 		then( 
-			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1);
+			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1); -- WHY SAFE cannot be applied ASK!!
 			return placementcomb;
 		)
 		else
@@ -270,6 +279,55 @@ SafeToCombinationLine(w: Wheel, ow: Overwheel, n: nat1) r: Wheel ==
 				) 
 			else
 				return SafeToCombinationLine(placement, ow, n+1);
+	);
+
+--ASK ABOUT ALL OF THIS CLUSTER???
+CheckAndReturn(s: Safe, rot: Rotations) r: Rotations == 
+	(
+		--Requires starting value for r = [1,1,1]
+		dcl placementsafe: Safe := s;
+		dcl placementRotations: Rotations := rot;
+
+		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
+		then( 
+			return placementRotations; --RETURNS [1,1,1] wheels were not moved
+		)
+		else
+			if rot = [MAX_SPOKES, MAX_SPOKES, MAX_SPOKES] --IF reached final combination
+			then( 
+				if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = false 
+				then( 
+					return --HOW TO RAISE ERROR THAT NO COMBINATIONS EXISTS?
+				)
+			)
+
+
+			--RECURSIVE PART STARTS FROM DOWN HERE BELOW, FROM THE INNER OVERLAY. STILL THE SAME INITIAL IF CHAIN.
+
+
+			else
+				if rot(1) <> 16
+				then ( -- Turns inner overwheel once and repeats the loop to see if they get a correct combination
+					placementsafe(1)(1) := Turn(s(1)(1));
+					placementRotations(1) := rot(1)+1;
+					return CheckAndReturn(placementsafe, placementRotations);
+				)
+				else
+					if rot(2) <> 16
+					then( 
+						placementsafe(1)(2) := Turn(s(1)(2)); -- Turns wheel
+						placementsafe(2)(2) := Turn(s(2)(2)); -- Turns overwheel
+						placementRotations(2) := rot(2)+1;
+						return CheckAndReturn(placementsafe, placementRotations);
+					)
+					else
+						if	rot(3) <> 16
+						then( 
+								placementsafe(1)(3) := Turn(s(1)(3)); -- Turns wheel
+								placementsafe(2)(3) := Turn(s(2)(3)); -- Turns overwheel
+								placementRotations(3) := rot(3)+1;
+								return CheckAndReturn(placementsafe, placementRotations);
+							) 
 	);
 
 
