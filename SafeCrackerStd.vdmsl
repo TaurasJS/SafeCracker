@@ -142,6 +142,61 @@ functions
 	check_values: Combination -> bool
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
 
+
+
+	--Overwrite function to be used in To_combination functions.
+	OverwritenWheel: Wheel * Value * nat1 -> Wheel
+	OverwritenWheel(w, v, n) == w++{n |-> v}; --NoteToMyself: Used overriding.
+
+
+
+	To_combination_line: Wheel * Overwheel * nat1 -> Wheel -- TO ASK: no measure??
+	To_combination_line(w, ow, n) == 
+		let
+			placement: Wheel = w
+		in
+			if n = MAX_SPOKES 
+				then( -- If last recursion
+					if ow(n) <> <Empty> 
+					then 
+						(
+							OverwritenWheel(w, ow(n), n)
+						) 
+					else
+						placement
+				)
+				else
+					if ow(n) <> <Empty> --If not last recursion
+					then 
+						(
+							To_combination_line(OverwritenWheel(w, ow(n), n), ow, n+1)
+						) 
+					else
+						To_combination_line(placement, ow, n+1);
+
+	
+
+	To_combination_Full: Safe * Combination * nat1 -> Combination
+	To_combination_Full(s, c, n) ==
+			if n = MAX_WHEELS-1
+				then( 
+					c++{n |-> To_combination_line(s(2)(n), c(n), 1)} --ASK ABOUT: why Safe cannot be applied?
+					/*
+					For debugging,
+					IN NORMAL CODE SHOULD BELIKE THAT:
+					placementcomb(n) := SafeToCombinationLine(s(2)(n), c(n), 1);
+					return placementcomb;*/
+				)
+				else
+					To_combination_Full(s, c++{n |-> To_combination_line(s(2)(n), c(n), 1)}, n+1);
+					/* 
+					For debugging,
+					IN NORMAL CODE SHOULD BELIKE THAT:
+					placementcomb(n) := SafeToCombinationLine(s(2)(n), c(n), 1);
+					return SafeTocombinationFull(s, placementcomb, n+1); */
+
+		
+
 	safe_to_combination: Safe * Combination -> Combination 
 	safe_to_combination(s, c) == SafeTocombinationFull(s, c, 1); --ASK ABOUT
 
@@ -153,6 +208,68 @@ functions
 			newline: seq of nat1 | <Empty> = tl line
 		in
 			newline^number;
+
+
+	--For some reason this does not show Errors but is it correct, TO ASK.
+	TurnSafeOperation: Safe * nat1 -> Safe
+	TurnSafeOperation(s, n) ==
+	let
+		ow: Overwheel = s(1)(n+1),
+		w: wheel = s(1)(n)
+	in
+		s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))} and s(2)++{s(2)(n) |-> Turn(s(2)(n))};
+
+
+
+
+	InitCheckRotations: Safe * Rotations -> Rotations
+	InitCheckRotations(s, r) ==
+		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
+		then( 
+			[1,1,1] --RETURNS [1,1,1] wheels were not moved
+		)
+
+	Exists: Rotations -> bool --??????? throws error for if, tried all TO ASK
+	Exists(r) ==
+		if r <> [0,0,0] 
+		then
+			true
+		else
+			false;
+
+	CheckNonEdge: Safe * Rotations * nat1 -> Rotations --Pre: not first single overwheel or last wheel -> nat1 != 1 or MAX_WHEELS-2
+	CheckNonEdge(s, r, n) ==
+	let
+		rn: nat1 = 15
+	in
+		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --checks if needs to be turned
+		then 
+			r  --returns unturned rotations sequence.
+		else
+			(
+			if r(n) <> 16
+				then( 
+					-- Turns overwheel
+					--s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))}
+
+					-- Turns wheel
+					--s(2)++{s(2)(n) |-> Turn(s(2)(n))}
+
+					--placementRotations(2) := rot(2)+1; -- updates rotation
+
+					CheckNonEdge(TurnSafeOperation(s,n), r++{r(n) |-> r(n)+1}, n)
+				)
+				else
+					--starts checking next wheel and overwheel pair.
+					CheckNonEdge(TurnSafeOperation(s,n+1), r, n+1)
+			);
+
+	FindAndEnsure: Safe * Rotations * nat1 -> Rotations
+	FindAndEnsure(s, rot, n) == --@Todo add beggining and last check.
+
+	--ALSO NEED TEXT REVEALING OPERATION OR FUNCTION.
+
+
 
 -- ASK DURING PRACTICAL: Why is it impure operation if it is a recursive one?
 
@@ -297,12 +414,13 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 			then( 
 				if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = false 
 				then( 
-					return --HOW TO RAISE ERROR THAT NO COMBINATIONS EXISTS?
+					return [0,0,0];
 				)
 			)
 
 
 			--RECURSIVE PART STARTS FROM DOWN HERE BELOW, FROM THE INNER OVERLAY. STILL THE SAME INITIAL IF CHAIN.
+			--Starts if it is not the very final rotation.
 
 
 			else
