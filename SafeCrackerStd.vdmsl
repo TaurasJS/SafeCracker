@@ -119,24 +119,24 @@ values
 			]
 		);
 
-	OVERLAY_SAFE_INDEX: nat1 = 1;
-	WHEEL_SAFE_INDEX: nat1 = 2;
 
 functions
 
 
 	--Following function sums up values of one collumn in a combination (Top down view of safe).
-	--It takes a Combination and a natural number for the collumn to sum up.
+	-- c - combination, v - current value starts at 0, cn - collumn number,
+	-- sn - sequence number, starts from 1
 	--Values for that collumn are summed up.
-	sum_collumn: Combination * nat1 -> nat1
-	sum_collumn(c, cn) == 
-		let 
-			x: Value = c(1)(cn),
-			y: Value = c(2)(cn),
-			z: Value = c(3)(cn),
-			w: Value = c(4)(cn)
-		in 
-			x + y + z + w;
+	sum_collumn: Combination * nat * nat1 * nat1 -> nat1
+	sum_collumn(c, v, cn, sn) == 
+			if sn <> MAX_WHEELS
+			then(
+				sum_collumn(c, v+c(cn), cn, sn+1)
+			)
+			else
+				v+c(cn);
+
+
 	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
 	--Returns True if it is.
 	check_values: Combination -> bool
@@ -198,7 +198,7 @@ functions
 		
 
 	safe_to_combination: Safe * Combination -> Combination 
-	safe_to_combination(s, c) == SafeTocombinationFull(s, c, 1); --ASK ABOUT
+	safe_to_combination(s, c) == To_combination_Full(s, c, 1); --ASK ABOUT
 
 	Turn: Wheel | Overwheel -> Wheel | Overwheel
 	Turn(line) ==
@@ -224,7 +224,7 @@ functions
 
 	InitCheckRotations: Safe * Rotations -> Rotations
 	InitCheckRotations(s, r) ==
-		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
+		if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
 		then( 
 			[1,1,1] --RETURNS [1,1,1] wheels were not moved
 		)
@@ -239,33 +239,62 @@ functions
 
 	CheckNonEdge: Safe * Rotations * nat1 -> Rotations --Pre: not first single overwheel or last wheel -> nat1 != 1 or MAX_WHEELS-2
 	CheckNonEdge(s, r, n) ==
-	let
-		rn: nat1 = 15
-	in
-		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --checks if needs to be turned
-		then 
-			r  --returns unturned rotations sequence.
+		if n >= MAX_WHEELS-2
+		then(
+			[0,0,0] --if reached edge case return zeroes meaning none were found 
+		)
 		else
-			(
-			if r(n) <> 16
-				then( 
-					-- Turns overwheel
-					--s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))}
+		(
+			if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true --checks if needs to be turned
+			then 
+				r  --returns unturned rotations sequence.
+			else
+				(
+				if r(n) <> MAX_SPOKES
+					then( 
+						-- Turns overwheel
+						--s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))}
 
-					-- Turns wheel
-					--s(2)++{s(2)(n) |-> Turn(s(2)(n))}
+						-- Turns wheel
+						--s(2)++{s(2)(n) |-> Turn(s(2)(n))}
 
-					--placementRotations(2) := rot(2)+1; -- updates rotation
+						--placementRotations(2) := rot(2)+1; -- updates rotation
 
-					CheckNonEdge(TurnSafeOperation(s,n), r++{r(n) |-> r(n)+1}, n)
+						CheckNonEdge(TurnSafeOperation(s,n), r++{r(n) |-> r(n)+1}, n)
+					)
+					else
+						--starts checking next wheel and overwheel pair.
+						CheckNonEdge(TurnSafeOperation(s,n+1), r, n+1)
 				)
-				else
-					--starts checking next wheel and overwheel pair.
-					CheckNonEdge(TurnSafeOperation(s,n+1), r, n+1)
-			);
+		);
 
 	FindAndEnsure: Safe * Rotations * nat1 -> Rotations
 	FindAndEnsure(s, rot, n) == --@Todo add beggining and last check.
+		if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true
+		then (
+			rot
+		)
+		else -- first wheel (overwheel) turns (beggining edge case).
+		(
+				if n = 1
+				then(
+					if rot(n) <> MAX_SPOKES 
+						then 
+							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> r(1)+1}, n)
+						else
+							FindAndEnsure(TurnSafeOperation(s,n), rot, n+1) -- goes to non edge cases
+				)
+				else -- begins non edge cases
+					if Exists(CheckNonEdge(s, rot, n)) -- does this function updates local rotation and n? TO ASK
+					then 
+						rot 
+					else -- Begins final wheel edge case
+						if rot(n) <> MAX_SPOKES 
+						then 
+							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> r(1)+1}, n)
+						else
+							[0,0,0] -- if even after final edge case none were returned then returns zeroes which means no solution
+		)
 
 	--ALSO NEED TEXT REVEALING OPERATION OR FUNCTION.
 
@@ -292,7 +321,7 @@ functions
 	*/
 			
 
-	initial_safe: () -> Safe
+	/*initial_safe: () -> Safe
 	initial_safe() == GOOD_SAFE -- maybe, useless. Consider deleting function.
 	pre
 		--@todo
@@ -311,7 +340,7 @@ functions
 
 	valid_safe: Safe -> bool
 	valid_safe(s) == 
-		combinations(s) <> {};
+		combinations(s) <> {}; */
 
 
 --------------------------------------------------------------------------------------
@@ -335,7 +364,7 @@ functions
 state S of 
 	x: nat 
 init s == s = mk_S(0)
-end
+end 
 
 operations
 
@@ -353,7 +382,7 @@ operations
 						comb(i)(j) := s.#2(i)(j);
 		return comb;
 	);*/
-
+			/* 
 SafeTocombinationFull(s: Safe, c: Combination, n: nat1) r: Combination ==
 	(
 		-- ASK ABOUT ERRORS WHEN USING s RECURSIVE FUNCTIONS
@@ -446,7 +475,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 								placementRotations(3) := rot(3)+1;
 								return CheckAndReturn(placementsafe, placementRotations);
 							) 
-	);
+	);  */
 
 
 -- --@doc resets safe to initial positon
