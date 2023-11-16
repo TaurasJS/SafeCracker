@@ -1,4 +1,5 @@
 module SafeCrackerStd
+imports from IO		 operations  println	renamed println;
 exports all
 definitions 
 
@@ -143,63 +144,6 @@ functions
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM;
 
 
-
-	--Overwrite function to be used in To_combination functions.
-	OverwritenWheel: Wheel * Value * nat1 -> Wheel
-	OverwritenWheel(w, v, n) == w++{n |-> v}; --NoteToMyself: Used overriding.
-
-
-
-	To_combination_line: Wheel * Overwheel * nat1 -> Wheel -- TO ASK: no measure??
-	To_combination_line(w, ow, n) == 
-		let
-			placement: Wheel = w
-		in
-			if n = MAX_SPOKES 
-				then( -- If last recursion
-					if ow(n) <> <Empty> 
-					then 
-						(
-							OverwritenWheel(w, ow(n), n)
-						) 
-					else
-						placement
-				)
-				else
-					if ow(n) <> <Empty> --If not last recursion
-					then 
-						(
-							To_combination_line(OverwritenWheel(w, ow(n), n), ow, n+1)
-						) 
-					else
-						To_combination_line(placement, ow, n+1);
-
-	
-
-	To_combination_Full: Safe * Combination * nat1 -> Combination
-	To_combination_Full(s, c, n) ==
-			if n = MAX_WHEELS-1
-				then( 
-					c++{n |-> To_combination_line(s(2)(n), c(n), 1)} --ASK ABOUT: why Safe cannot be applied?
-					/*
-					For debugging,
-					IN NORMAL CODE SHOULD BELIKE THAT:
-					placementcomb(n) := SafeToCombinationLine(s(2)(n), c(n), 1);
-					return placementcomb;*/
-				)
-				else
-					To_combination_Full(s, c++{n |-> To_combination_line(s(2)(n), c(n), 1)}, n+1);
-					/* 
-					For debugging,
-					IN NORMAL CODE SHOULD BELIKE THAT:
-					placementcomb(n) := SafeToCombinationLine(s(2)(n), c(n), 1);
-					return SafeTocombinationFull(s, placementcomb, n+1); */
-
-		
-
-	safe_to_combination: Safe * Combination -> Combination 
-	safe_to_combination(s, c) == To_combination_Full(s, c, 1); --ASK ABOUT
-
 	Turn: Wheel | Overwheel -> Wheel | Overwheel
 	Turn(line) ==
 	--This function will be used twice in a row, since when a wheel is turned so does it's connected overwheel
@@ -209,82 +153,8 @@ functions
 		in
 			newline^number;
 
-
-	--For some reason this does not show Errors but is it correct, TO ASK.
-	/*TurnSafeOperation: Safe * nat1 -> Safe
-	TurnSafeOperation(s, n) ==
-	let
-		ow: Overwheel = s.#1(n+1),
-		w: Wheel = s.#1(n)
-	in
-		s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))} and s(2)++{s(2)(n) |-> Turn(s(2)(n))};*/
-
-
-	Exists: Rotations -> bool --??????? throws error for if, tried all TO ASK
-	Exists(r) == r <> [0,0,0];
-
-	
-	CheckNonEdge: Safe * Rotations * nat1 -> Rotations --Pre: not first single overwheel or last wheel -> nat1 != 1 or MAX_WHEELS-2
-	CheckNonEdge(s, r, n) ==
-		if n >= MAX_WHEELS-2
-		then(
-			[0,0,0] --if reached edge case return zeroes meaning none were found 
-		)
-		else
-		(
-			if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true --checks if needs to be turned
-			then 
-				r  --returns unturned rotations sequence.
-			else
-				(
-				if r(n) <> MAX_SPOKES
-					then( 
-						-- Turns overwheel
-						--s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))}
-
-						-- Turns wheel
-						--s(2)++{s(2)(n) |-> Turn(s(2)(n))}
-
-						--placementRotations(2) := rot(2)+1; -- updates rotation
-
-						CheckNonEdge(TurnSafeOperation(s,n), r++{r(n) |-> r(n)+1}, n)
-					)
-					else
-						--starts checking next wheel and overwheel pair.
-						CheckNonEdge(TurnSafeOperation(s,n+1), r, n+1)
-				)
-		);
-
-	FindAndEnsure: Safe * Rotations * nat1 -> Rotations
-	FindAndEnsure(s, rot, n) == --@Todo add beggining and last check.
-		if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true
-		then (
-			rot
-		)
-		else -- first wheel (overwheel) turns (beggining edge case).
-		(
-				if n = 1
-				then(
-					if rot(n) <> MAX_SPOKES 
-						then 
-							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> rot(1)+1}, n)
-						else
-							FindAndEnsure(TurnSafeOperation(s,n), rot, n+1) -- goes to non edge cases
-				)
-				else -- begins non edge cases
-					if Exists(CheckNonEdge(s, rot, n)) -- does this function updates local rotation and n? TO ASK
-					then 
-						rot 
-					else -- Begins final wheel edge case
-						if rot(n) <> MAX_SPOKES 
-						then 
-							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(MAX_WHEELS-1) |-> rot(MAX_WHEELS-1)+1}, n)
-						else
-							[0,0,0] -- if even after final edge case none were returned then returns zeroes which means no solution
-		)
-
-	--ALSO NEED TEXT REVEALING OPERATION OR FUNCTION.
-
+	InitSafe: () -> Safe
+	InitSafe() == GOOD_SAFE;
 
 
 -- ASK DURING PRACTICAL: Why is it impure operation if it is a recursive one?
@@ -364,7 +234,7 @@ TurnSafeOperation(s: Safe, n: nat1) r: Safe ==
 		ow(n+1) := Turn(ow(n+1));
 		w(n) := Turn(w(n));
 
-		return mk_(ow, w);
+		return mk_(ow, w); --no error on home machine, error on cluster machine. Inquire during practical TODO!!!
 );
 
 SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
@@ -397,26 +267,19 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 						return placementrotations;)
 					else
 						(
-							TurnSafeOperation(s, i);
+							placementsafe := TurnSafeOperation(placementsafe, i);
 							placementrotations(i) := j;
 						)
 			)
 		);
-
-		for i = n to MAX_WHEELS-2 by 1 do -- if earlier loop does not break op by returning, resets everything that was checked to safe before this operation
-		(
-			for j = 1 to MAX_SPOKES by 1 do
-			(
-				placementsafe(1)(i+1)(j) := s.#1(i+1)(j); -- Redo with maybe ( |-> ) ?
-				placementsafe(1)(i)(j) := s.#2(i)(j);
-			)
-		);
-		return rot; -- returns unchanged roation.
+		return rot; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
 	);
 
 CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 	(
 		dcl placementsafe: Safe := s;
+		dcl placementow: Overlay := s.#1;
+		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
 
 		for i = 1 to MAX_WHEELS-2 by 1 do
@@ -427,109 +290,55 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 						if(check_values(SafeToCombinationOperation(placementsafe))) = true -- if initial value is solution, returns rotation and loop breaks.
 						then(
 							return placementrotations;
-							);
-						placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
-						
+							)
+						else(
+							placementow(i) := Turn(placementow(i)); -- placement safe is updated
+							placementsafe := mk_(placementow, placementws);
+
+							if CheckThroughFollowing(placementsafe, i, placementrotations) <> placementrotations
+								then(
+									placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
+									return placementrotations;
+								)
+						)
+					)
+				else -- if not first wheel (not a single overwheel turned but both)
+					(
+						if(check_values(SafeToCombinationOperation(placementsafe))) = true --checks starting value
+						then
+						(
+							return placementrotations; -- returns if good unturned
+						)
+						else -- turns both wheel and overwheel
+						(
+							placementsafe := TurnSafeOperation(placementsafe, i);
+							--checks through following possible combinations
+							if CheckThroughFollowing(placementsafe, i, placementrotations) <> placementrotations
+								then(
+									placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
+									return placementrotations;
+								)
+						)
 					)
 			)
-		)
-
-
-	);
-			/* 
-SafeTocombinationFull(s: Safe, c: Combination, n: nat1) r: Combination ==
-	(
-		-- ASK ABOUT ERRORS WHEN USING s RECURSIVE FUNCTIONS
-		-- Requires pre condition that c = STARTING_COMBINATION
-		-- Requires pre condition that n = 1
-		dcl placementcomb: Combination := c; -- placement Combination to avoid errors. Will be returned after recursion is done
-
-		if n = MAX_WHEELS-1 
-		then( 
-			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1); -- WHY SAFE cannot be applied ASK!!
-			return placementcomb;
-		)
-		else
-			placementcomb(n) := SafeToCombinationLine(s(n), c(n), 1);
-			return SafeTocombinationFull(s, placementcomb, n+1);
+		);
+		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
 	);
 
-SafeToCombinationLine(w: Wheel, ow: Overwheel, n: nat1) r: Wheel ==
+	Solutioning(s: Safe) ==
 	(
-		-- Requires pre condition that n = 1
-		dcl placement: Wheel := w; -- placement wheel to avoid errors. Will be returned after recursion is done
+		dcl rot: Rotations := CheckAndReturn(s, [1,1,1]);
 
-		if n = MAX_SPOKES 
-		then( -- If last recursion
-			if ow(n) <> <Empty> 
-			then 
-				(
-					placement(n) := ow(n);
-					return placement;
-				) 
-			else
-				return placement;
+		if rot <> [0,0,0]
+		then(
+			print("Found a solution rotation: " ^ rot);
 		)
 		else
-			if ow(n) <> <Empty> 
-			then 
-				(
-					placement(n) := ow(n);
-					return SafeToCombinationLine(placement, ow, n+1);
-				) 
-			else
-				return SafeToCombinationLine(placement, ow, n+1);
-	);
+			print("No possible solutions for this safe");
+	)
 
---ASK ABOUT ALL OF THIS CLUSTER???
-CheckAndReturn(s: Safe, rot: Rotations) r: Rotations == 
-	(
-		--Requires starting value for r = [1,1,1]
-		dcl placementsafe: Safe := s;
-		dcl placementRotations: Rotations := rot;
-
-		if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
-		then( 
-			return placementRotations; --RETURNS [1,1,1] wheels were not moved
-		)
-		else
-			if rot = [MAX_SPOKES, MAX_SPOKES, MAX_SPOKES] --IF reached final combination
-			then( 
-				if check_values(SafeTocombinationFull(s, STARTING_COMBINATION, 1)) = false 
-				then( 
-					return [0,0,0];
-				)
-			)
-
-
-			--RECURSIVE PART STARTS FROM DOWN HERE BELOW, FROM THE INNER OVERLAY. STILL THE SAME INITIAL IF CHAIN.
-			--Starts if it is not the very final rotation.
-
-
-			else
-				if rot(1) <> 16
-				then ( -- Turns inner overwheel once and repeats the loop to see if they get a correct combination
-					placementsafe(1)(1) := Turn(s(1)(1));
-					placementRotations(1) := rot(1)+1;
-					return CheckAndReturn(placementsafe, placementRotations);
-				)
-				else
-					if rot(2) <> 16
-					then( 
-						placementsafe(1)(2) := Turn(s(1)(2)); -- Turns wheel
-						placementsafe(2)(2) := Turn(s(2)(2)); -- Turns overwheel
-						placementRotations(2) := rot(2)+1;
-						return CheckAndReturn(placementsafe, placementRotations);
-					)
-					else
-						if	rot(3) <> 16
-						then( 
-								placementsafe(1)(3) := Turn(s(1)(3)); -- Turns wheel
-								placementsafe(2)(3) := Turn(s(2)(3)); -- Turns overwheel
-								placementRotations(3) := rot(3)+1;
-								return CheckAndReturn(placementsafe, placementRotations);
-							) 
-	);  */
+	/* BRING HOME MACHINE TO THE PRACTICAL, ASK WHY NO ERRORS SHOWN WHEN ERRORS WERE PRESENT ON CLUSTER MACHINES??
+						ASK ABOUT "NO SUCH MODULE AS IO" */
 
 
 -- --@doc resets safe to initial positon
