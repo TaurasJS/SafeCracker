@@ -131,16 +131,16 @@ functions
 	sum_collumn(c, v, cn, sn) == 
 			if sn <> MAX_WHEELS
 			then(
-				sum_collumn(c, v+c(cn), cn, sn+1)
+				sum_collumn(c, v+c(sn)(cn), cn, sn+1)
 			)
 			else
-				v+c(cn);
+				v+c(sn)(cn);
 
 
 	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
 	--Returns True if it is.
 	check_values: Combination -> bool
-	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, i) = SECRET_SUM;
+	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM;
 
 
 
@@ -211,32 +211,19 @@ functions
 
 
 	--For some reason this does not show Errors but is it correct, TO ASK.
-	TurnSafeOperation: Safe * nat1 -> Safe
+	/*TurnSafeOperation: Safe * nat1 -> Safe
 	TurnSafeOperation(s, n) ==
 	let
-		ow: Overwheel = s(1)(n+1),
-		w: wheel = s(1)(n)
+		ow: Overwheel = s.#1(n+1),
+		w: Wheel = s.#1(n)
 	in
-		s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))} and s(2)++{s(2)(n) |-> Turn(s(2)(n))};
+		s(1)++{s(1)(n+1) |-> Turn(s(1)(n+1))} and s(2)++{s(2)(n) |-> Turn(s(2)(n))};*/
 
-
-
-
-	InitCheckRotations: Safe * Rotations -> Rotations
-	InitCheckRotations(s, r) ==
-		if check_values(To_combination_Full(s, STARTING_COMBINATION, 1)) = true --IF SAFE IS GOOD RETURNS ROTATION
-		then( 
-			[1,1,1] --RETURNS [1,1,1] wheels were not moved
-		)
 
 	Exists: Rotations -> bool --??????? throws error for if, tried all TO ASK
-	Exists(r) ==
-		if r <> [0,0,0] 
-		then
-			true
-		else
-			false;
+	Exists(r) == r <> [0,0,0];
 
+	
 	CheckNonEdge: Safe * Rotations * nat1 -> Rotations --Pre: not first single overwheel or last wheel -> nat1 != 1 or MAX_WHEELS-2
 	CheckNonEdge(s, r, n) ==
 		if n >= MAX_WHEELS-2
@@ -280,7 +267,7 @@ functions
 				then(
 					if rot(n) <> MAX_SPOKES 
 						then 
-							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> r(1)+1}, n)
+							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> rot(1)+1}, n)
 						else
 							FindAndEnsure(TurnSafeOperation(s,n), rot, n+1) -- goes to non edge cases
 				)
@@ -291,7 +278,7 @@ functions
 					else -- Begins final wheel edge case
 						if rot(n) <> MAX_SPOKES 
 						then 
-							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(1) |-> r(1)+1}, n)
+							FindAndEnsure(TurnSafeOperation(s,n), rot++{rot(MAX_WHEELS-1) |-> rot(MAX_WHEELS-1)+1}, n)
 						else
 							[0,0,0] -- if even after final edge case none were returned then returns zeroes which means no solution
 		)
@@ -368,20 +355,87 @@ end
 
 operations
 
-/*SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
+TurnSafeOperation(s: Safe, n: nat1) r: Safe ==
+(
+		dcl ow: Overlay := s.#1;
+		dcl w: Wheels := s.#2;
+		
+		
+		ow(n+1) := Turn(ow(n+1));
+		w(n) := Turn(w(n));
+
+		return mk_(ow, w);
+);
+
+SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
 	(
 		dcl comb: Combination := STARTING_COMBINATION;
 
-		for i = 1 to MAX_WHEELS-1 by 1 do
+		for i = 1 to MAX_WHEELS-2 by 1 do
 				for j = 1 to MAX_SPOKES by 1 do
 					if s.#1(i)(j) <> <Empty> 
 					then( 
-						comb(i)(j) := s.#1(i)(j)
+						comb(i)(j) := s.#1(i)(j);
 					)
 					else
 						comb(i)(j) := s.#2(i)(j);
 		return comb;
-	);*/
+	);
+
+
+CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- checks through all possible combinations for that one move. To be used in CheckAndReturn Operation.
+	(
+		dcl placementsafe: Safe := s;
+		dcl placementrotations: Rotations := rot;
+
+		for i = n to MAX_WHEELS-2 by 1 do
+		(
+			for j = 1 to MAX_SPOKES by 1 do
+			(
+				if(check_values(SafeToCombinationOperation(placementsafe))) = true -- if finds, returns rotations and loop breaks.
+					then(
+						return placementrotations;)
+					else
+						(
+							TurnSafeOperation(s, i);
+							placementrotations(i) := j;
+						)
+			)
+		);
+
+		for i = n to MAX_WHEELS-2 by 1 do -- if earlier loop does not break op by returning, resets everything that was checked to safe before this operation
+		(
+			for j = 1 to MAX_SPOKES by 1 do
+			(
+				placementsafe(1)(i+1)(j) := s.#1(i+1)(j); -- Redo with maybe ( |-> ) ?
+				placementsafe(1)(i)(j) := s.#2(i)(j);
+			)
+		);
+		return rot; -- returns unchanged roation.
+	);
+
+CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
+	(
+		dcl placementsafe: Safe := s;
+		dcl placementrotations: Rotations := rot;
+
+		for i = 1 to MAX_WHEELS-2 by 1 do
+		(
+			for j = 1 to MAX_SPOKES by 1 do(
+				if i = 1
+					then(
+						if(check_values(SafeToCombinationOperation(placementsafe))) = true -- if initial value is solution, returns rotation and loop breaks.
+						then(
+							return placementrotations;
+							);
+						placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
+						
+					)
+			)
+		)
+
+
+	);
 			/* 
 SafeTocombinationFull(s: Safe, c: Combination, n: nat1) r: Combination ==
 	(
