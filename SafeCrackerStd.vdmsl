@@ -1,5 +1,5 @@
 module SafeCrackerStd
-imports from IO		 operations  println	renamed println;
+--imports from IO		 operations  println	renamed println;
 exports all
 definitions 
 
@@ -53,11 +53,11 @@ types
 	inv s == s <= MAX_SPOKES;
 	
 	Wheel = seq of Value
-	inv w == len w = MAX_SPOKES; -- length of wheel must be equal to max spokes for the integrity of the game
+	inv w == len w = MAX_SPOKES or len w = 1 or len w = 15; -- length of wheel must be equal to max spokes for the integrity of the game or 1 for turning.
 
 	Overwheel = seq of OverValue
-	inv ow == len ow = MAX_SPOKES; -- length of overlay wheel of non empty values is equal to MAX_SPOKES, half of them are filled out as <Empty>
-	--@todo would you need to represent the wheels in combination?
+	inv ow == len ow = MAX_SPOKES or len ow = 1 or len ow = 15; -- length of overlay wheel of non empty values is equal to MAX_SPOKES, half of them are filled out as <Empty>, or equal to 1 for turning fucntion.
+
 	Wheels = seq of Wheel
 	inv ws == len ws <= MAX_WHEELS; -- ammount of wheels must be equal or less to the MAX_WHEELS
 	
@@ -143,13 +143,20 @@ functions
 	check_values: Combination -> bool
 	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM;
 
-
-	Turn: Wheel | Overwheel -> Wheel | Overwheel
+	TurnOW: Overwheel -> Overwheel
+	TurnOW(line) ==
+	let
+			number: Overwheel = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
+			newline: Overwheel  = tl line
+	in
+		newline^number;
+	
+	Turn: Wheel -> Wheel
 	Turn(line) ==
 	--This function will be used twice in a row, since when a wheel is turned so does it's connected overwheel
 		let
-			number: seq of nat1 | <Empty> = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
-			newline: seq of nat1 | <Empty> = tl line
+			number: Wheel = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
+			newline: Wheel  = tl line
 		in
 			newline^number;
 
@@ -225,17 +232,17 @@ end
 
 operations
 
-TurnSafeOperation(s: Safe, n: nat1) r: Safe ==
+/*TurnSafeOperation(s: Safe, n: nat1) r: Safe ==
 (
 		dcl ow: Overlay := s.#1;
 		dcl w: Wheels := s.#2;
 		
 		
-		ow(n+1) := Turn(ow(n+1));
+		ow(n+1) := TurnOW(ow(n+1));
 		w(n) := Turn(w(n));
 
 		return mk_(ow, w); --no error on home machine, error on cluster machine. Inquire during practical TODO!!!
-);
+);*/
 
 SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
 	(
@@ -255,19 +262,23 @@ SafeToCombinationOperation(s: Safe) r: Combination == -- Example
 
 CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- checks through all possible combinations for that one move. To be used in CheckAndReturn Operation.
 	(
-		dcl placementsafe: Safe := s;
+		--dcl placementsafe: Safe := s;
+		dcl placementow: Overlay := s.#1;
+		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
 
 		for i = n to MAX_WHEELS-2 by 1 do
 		(
 			for j = 1 to MAX_SPOKES by 1 do
 			(
-				if(check_values(SafeToCombinationOperation(placementsafe))) = true -- if finds, returns rotations and loop breaks.
+				if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true -- if finds, returns rotations and loop breaks.
 					then(
 						return placementrotations;)
 					else
 						(
-							placementsafe := TurnSafeOperation(placementsafe, i);
+							--placementsafe := TurnSafeOperation(placementsafe, i);
+							placementow(i+1) := TurnOW(placementow(i+1));
+							placementws(i) := Turn(placementws(i));
 							placementrotations(i) := j;
 						)
 			)
@@ -277,7 +288,7 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 
 CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 	(
-		dcl placementsafe: Safe := s;
+		--dcl placementsafe: Safe := s;
 		dcl placementow: Overlay := s.#1;
 		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
@@ -285,37 +296,39 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		for i = 1 to MAX_WHEELS-2 by 1 do
 		(
 			for j = 1 to MAX_SPOKES by 1 do(
-				if i = 1
+				if i = 1 --if beggining (begins from center overwheel so only overwheel is turned)
 					then(
-						if(check_values(SafeToCombinationOperation(placementsafe))) = true -- if initial value is solution, returns rotation and loop breaks.
+						if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true -- if initial value is solution, returns rotation and loop breaks.
 						then(
 							return placementrotations;
 							)
 						else(
-							placementow(i) := Turn(placementow(i)); -- placement safe is updated
-							placementsafe := mk_(placementow, placementws);
+							placementow(i) := TurnOW(placementow(i)); -- placement safe is updated
 
-							if CheckThroughFollowing(placementsafe, i, placementrotations) <> placementrotations
+							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
 								then(
-									placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
+									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
 									return placementrotations;
 								)
 						)
 					)
 				else -- if not first wheel (not a single overwheel turned but both)
 					(
-						if(check_values(SafeToCombinationOperation(placementsafe))) = true --checks starting value
+						if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true --checks starting value
 						then
 						(
 							return placementrotations; -- returns if good unturned
 						)
 						else -- turns both wheel and overwheel
 						(
-							placementsafe := TurnSafeOperation(placementsafe, i);
+							--placementsafe := TurnSafeOperation(placementsafe, i);
+							placementow(i+1) := TurnOW(placementow(i+1));
+							placementws(i) := Turn(placementws(i));
+							placementrotations(i) := j;
 							--checks through following possible combinations
-							if CheckThroughFollowing(placementsafe, i, placementrotations) <> placementrotations
+							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
 								then(
-									placementrotations := CheckThroughFollowing(placementsafe, i, placementrotations);
+									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
 									return placementrotations;
 								)
 						)
@@ -325,7 +338,12 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
 	);
 
-	Solutioning(s: Safe) ==
+	Check() r: Rotations ==
+	(
+		return CheckAndReturn(GOOD_SAFE, [1,1,1]);
+	);
+
+	/*Solutioning(s: Safe) ==
 	(
 		dcl rot: Rotations := CheckAndReturn(s, [1,1,1]);
 
@@ -335,7 +353,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		)
 		else
 			print("No possible solutions for this safe");
-	)
+	) */
 
 	/* BRING HOME MACHINE TO THE PRACTICAL, ASK WHY NO ERRORS SHOWN WHEN ERRORS WERE PRESENT ON CLUSTER MACHINES??
 						ASK ABOUT "NO SUCH MODULE AS IO" */
