@@ -35,25 +35,25 @@ values
 types
 
 	Value = nat1
-	--@todo what about other wheels? what if it goes beyond 40 when summing? 
 	inv v == v <= SECRET_SUM - MAX_WHEELS + 1;
 
 	Collumnsum = nat1
 	inv c == c <= SECRET_SUM;
 
 	OverValue = nat1 | <Empty>
-	--@todo what about other wheels? what if it goes beyond 40 when summing? 
 	inv v == v = <Empty> or v <= SECRET_SUM - MAX_WHEELS + 1;
 
 	Rotate = nat
 	inv r == r <= MAX_SPOKES and r >= 0;
 	
 	Spokes = nat1 
-	--@todo how many spokes are possible?
 	inv s == s <= MAX_SPOKES;
 	
 	Wheel = seq of Value
 	inv w == len w = MAX_SPOKES or len w = 1 or len w = 15; -- length of wheel must be equal to max spokes for the integrity of the game or 1 for turning.
+
+	combwheel = seq of Value
+	inv cw == len cw = MAX_SPOKES;
 
 	Overwheel = seq of OverValue
 	inv ow == len ow = MAX_SPOKES or len ow = 1 or len ow = 15; -- length of overlay wheel of non empty values is equal to MAX_SPOKES, half of them are filled out as <Empty>, or equal to 1 for turning fucntion.
@@ -65,19 +65,16 @@ types
 	Overlay = seq of Overwheel
 	inv ovl == len ovl < MAX_WHEELS;
 	
-	-- Safe = set of Overwheel * set of Wheels
-	-- inv s == card s.#1 <= card s.#2;
-	
 	Safe = Overlay * Wheels
 	inv mk_(o, w) == len o = len w-1;
 
 	--@todo a safe is not a combination; but a combination is part of a safe? 
 	--in my case combinationn is 4 sequences of wheels that we would see if we saw the safe cracker puzzle from top-down. (wheels and overhweels combined).
-	Combination = Wheels
-	inv c == len c = 4;--???
+	Combination = seq of combwheel
+	inv c == len c = MAX_WHEELS;
 
 	Rotations =  seq of Rotate
-	inv r == len r = 3; -- First OUTER and MID2 don't rotate. Rotations are how many times other circle combinations (of inner and outer connected layers) were roateted, max 16 times.
+	inv r == len r = MAX_WHEELS-1; -- last two connected wheels do not rotate since their rotation would not change the result.
 
 values
 	--GOOD_SAFE.#1(1) = 				[10, <Empty>, 2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>],
@@ -91,8 +88,6 @@ values
 				--MID2_OVERLAY
 				[5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>, 6, <Empty>, 4, <Empty>]
 			],
-			-- seq of seq of Value
-			-- <= 4   = 16   
 			[
 				--INNER
 				[10,  1, 10, 12, 10, 10,  3, 17,  3, 10, 13,  1,  6,  8, 10, 24],
@@ -106,7 +101,8 @@ values
 		);
 
 		--Starting combination is equal to the default 4 wheels of safe. Just for the clarity. Not actual values
-		--Only OUTER wheel is correct because it is not touched in my functions.
+		--Only OUTER and MID2 wheel is correct because it is not touched in my functions.
+		--OUTER and MID2 wheel are connected and would not change the result by turning.
 		STARTING_COMBINATION: Combination =(
 			[
 				--INNER
@@ -135,13 +131,16 @@ functions
 				sum_collumn(c, v+c(sn)(cn), cn, sn+1)
 			)
 			else
-				v+c(sn)(cn);
+				v+c(sn)(cn)
+		pre v = 0 and cn <= MAX_SPOKES and sn = 1; -- ask why cn condition doesnt pass.
 
 
 	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
 	--Returns True if it is.
+	-- pre condition ensures that Combination uses sequences with 16 values.
 	check_values: Combination -> bool
-	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM;
+	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM
+	pre forall j in set {1,...,MAX_WHEELS} & len x(j) = MAX_SPOKES;
 
 	TurnOW: Overwheel -> Overwheel
 	TurnOW(line) ==
@@ -149,7 +148,8 @@ functions
 			number: Overwheel = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
 			newline: Overwheel  = tl line
 	in
-		newline^number;
+		newline^number
+	pre len line = MAX_SPOKES;
 	
 	Turn: Wheel -> Wheel
 	Turn(line) ==
@@ -158,8 +158,11 @@ functions
 			number: Wheel = [hd line], -- ASK ABOUT THIS, WILL THIS MAKE A SEQUENCE WITH ONE ELEMENT?
 			newline: Wheel  = tl line
 		in
-			newline^number;
+			newline^number
+		pre len line = MAX_SPOKES;
 
+
+	-- main function.
 	InitSafe: () -> Safe
 	InitSafe() == GOOD_SAFE;
 
@@ -244,7 +247,10 @@ operations
 		return mk_(ow, w); --no error on home machine, error on cluster machine. Inquire during practical TODO!!!
 );*/
 
-SafeToCombinationOperation(s: Safe) r: Combination == -- Example 
+
+--Turns provided safe into a combination (a sequence of sequences equal to ammount of max wheels).
+--Combination is how the safe cracker would look from top down (only visible values).
+SafeToCombinationOperation(s: Safe) r: Combination ==
 	(
 		dcl comb: Combination := STARTING_COMBINATION;
 
@@ -257,12 +263,15 @@ SafeToCombinationOperation(s: Safe) r: Combination == -- Example
 					else
 						comb(i)(j) := s.#2(i)(j);
 		return comb;
-	);
+	)
+	pre len s.#1 = MAX_WHEELS-1 
+		and len s.#2 = MAX_WHEELS
+		and forall x in set {1,...,MAX_WHEELS-1} & len s.#1(x) = MAX_SPOKES
+		and forall z in set {1,...,MAX_WHEELS} & len s.#2(z) = MAX_SPOKES;
 
 
 CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- checks through all possible combinations for that one move. To be used in CheckAndReturn Operation.
 	(
-		--dcl placementsafe: Safe := s;
 		dcl placementow: Overlay := s.#1;
 		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
@@ -279,12 +288,18 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 							--placementsafe := TurnSafeOperation(placementsafe, i);
 							placementow(i+1) := TurnOW(placementow(i+1));
 							placementws(i) := Turn(placementws(i));
-							placementrotations(i) := j;
+							placementrotations(i+1) := j;
 						)
 			)
 		);
 		return rot; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
-	);
+	)
+	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
+		and len s.#2 = MAX_WHEELS -- not sure if needed, safe invariant already covers this
+		and forall x in set {1,...,MAX_WHEELS-1} & len s.#1(x) = MAX_SPOKES
+		and forall z in set {1,...,MAX_WHEELS} & len s.#2(z) = MAX_SPOKES
+		and n <= MAX_WHEELS-2
+		and forall l in set {1,...,MAX_WHEELS-1} & rot(l) <= 16;
 
 CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 	(
@@ -303,7 +318,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 							return placementrotations;
 							)
 						else(
-							placementow(i) := TurnOW(placementow(i)); -- placement safe is updated
+							placementow(i) := TurnOW(placementow(i)); -- placement overlay is updated
 
 							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
 								then(
@@ -324,7 +339,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 							--placementsafe := TurnSafeOperation(placementsafe, i);
 							placementow(i+1) := TurnOW(placementow(i+1));
 							placementws(i) := Turn(placementws(i));
-							placementrotations(i) := j;
+							placementrotations(i+1) := j;
 							--checks through following possible combinations
 							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
 								then(
@@ -336,11 +351,21 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 			)
 		);
 		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
-	);
+	)
+	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
+		and len s.#2 = MAX_WHEELS -- not sure if needed, safe invariant already covers this
+		and forall x in set {1,...,MAX_WHEELS-1} & len s.#1(x) = MAX_SPOKES
+		and forall z in set {1,...,MAX_WHEELS} & len s.#2(z) = MAX_SPOKES
+		and rot = [1,1,1];
 
 	Check() r: Rotations ==
 	(
 		return CheckAndReturn(GOOD_SAFE, [1,1,1]);
+	);
+
+	Try() r: Combination == -- used for testing out operations
+	(
+		SafeToCombinationOperation(GOOD_SAFE);
 	);
 
 	/*Solutioning(s: Safe) ==
