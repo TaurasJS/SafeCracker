@@ -1,5 +1,5 @@
 module SafeCrackerStd
---imports from IO		 operations  println	renamed println;
+imports from IO		 operations  print	renamed print;
 exports all
 definitions 
 
@@ -100,6 +100,20 @@ values
 			]
 		);
 
+	TESTING_SAFE: Safe = mk_( -- should return [1,1,1]
+			[
+				[10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>],
+				[10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>],
+				[10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>, 10, <Empty>]
+			],
+			[
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+			]
+	);
+
 		--Starting combination is equal to the default 4 wheels of safe. Just for the clarity. Not actual values
 		--Only OUTER and MID2 wheel is correct because it is not touched in my functions.
 		--OUTER and MID2 wheel are connected and would not change the result by turning.
@@ -124,7 +138,7 @@ functions
 	-- c - combination, v - current value starts at 0, cn - collumn number,
 	-- sn - sequence number, starts from 1
 	--Values for that collumn are summed up.
-	sum_collumn: Combination * nat * nat1 * nat1 -> nat1
+	/*sum_collumn: Combination * nat * nat1 * nat1 -> nat1
 	sum_collumn(c, v, cn, sn) == 
 			if sn <> MAX_WHEELS
 			then(
@@ -132,14 +146,43 @@ functions
 			)
 			else
 				v+c(sn)(cn)
-		pre v = 0 and cn <= MAX_SPOKES and sn = 1; -- ask why cn condition doesnt pass.
+		pre 
+			-- if you have constants then why parameter?
+			--v = 0 and 
+			cn <= MAX_SPOKES 
+			--and sn = 1 -- ask why cn condition doesnt pass.
+		measure 
+			MAX_WHEELS - sn; */
 
+	sum_collumn: Combination * Spokes * nat1 -> nat1 
+	sum_collumn(c, cn, sn) == 
+		if sn <> MAX_WHEELS then
+			c(sn)(cn) + sum_collumn(c, cn, sn+1)
+		else 
+			c(sn)(cn)
+	pre 
+		sn <= MAX_WHEELS
+	measure 
+		MAX_WHEELS - sn;
+
+	sum_collumn_start: Combination * Spokes -> nat1
+	sum_collumn_start(c, cn) == 
+		sum_collumn(c, cn, 1);
+
+	  sumelems: seq of nat -> nat
+	  sumelems(s) == 
+	  	if s <> [] then 
+			hd s + sumelems(tl s)
+		else 
+			0
+	measure 
+		len s;
 
 	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
 	--Returns True if it is.
 	-- pre condition ensures that Combination uses sequences with 16 values.
 	check_values: Combination -> bool
-	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn(x, 0, i, 1) = SECRET_SUM
+	check_values(x) == forall i in set {1,...,MAX_SPOKES} & sum_collumn_start(x, i) = SECRET_SUM
 	pre forall j in set {1,...,MAX_WHEELS} & len x(j) = MAX_SPOKES;
 
 	TurnOW: Overwheel -> Overwheel
@@ -166,50 +209,6 @@ functions
 	InitSafe: () -> Safe
 	InitSafe() == GOOD_SAFE;
 
-
--- ASK DURING PRACTICAL: Why is it impure operation if it is a recursive one?
-
-	/*f: seq of seq of int -> seq of int 
-	f(s) == 
-		let 
-			inner: Wheel = s(2)(1),
-		    mid1 : Wheel = s(2)(2) 
-		in
-			inner ^ mid1   ;
-
-	f(s) == s(2)(1) ^ s(2)(2)
-
-	g: set1 of int -> int 
-	g(s) == 
-		let x in set s 
-			be st (forall i in set s \ {x} & x <= i) 
-		 in 
-		 	x;
-	*/
-			
-
-	/*initial_safe: () -> Safe
-	initial_safe() == GOOD_SAFE -- maybe, useless. Consider deleting function.
-	pre
-		--@todo
-		true
-	post
-		--@todo
-		true;
-		
-	--@doc realises requirement R3
-	combinations: Safe -> set of Combination
-	combinations(s) ==
-		--@todo
-		is not yet specified
-	pre true --@todo
-	post true;--@todo
-
-	valid_safe: Safe -> bool
-	valid_safe(s) == 
-		combinations(s) <> {}; */
-
-
 --------------------------------------------------------------------------------------
 --@doc you don't need the part below; 
 --     it's useful for those who struggle with functions alone!
@@ -228,10 +227,10 @@ functions
 -- 	s = mk_State(nil, SECRET_SUM)  
 -- end
 
-state S of 
+/*state S of 
 	x: nat 
 init s == s = mk_S(0)
-end 
+end */
 
 operations
 
@@ -254,14 +253,17 @@ SafeToCombinationOperation(s: Safe) r: Combination ==
 	(
 		dcl comb: Combination := STARTING_COMBINATION;
 
-		for i = 1 to MAX_WHEELS-2 by 1 do
-				for j = 1 to MAX_SPOKES by 1 do
-					if s.#1(i)(j) <> <Empty> 
-					then( 
-						comb(i)(j) := s.#1(i)(j);
-					)
-					else
-						comb(i)(j) := s.#2(i)(j);
+		for i = 1 to MAX_WHEELS-1 by 1 do(
+				for j = 1 to MAX_SPOKES by 1 do(
+						if s.#1(i)(j) <> <Empty> 
+						then( 
+							comb(i)(j) := s.#1(i)(j);
+						)
+						else
+							comb(i)(j) := s.#2(i)(j);
+				);
+		);
+		comb(MAX_WHEELS) := s.#2(MAX_WHEELS);
 		return comb;
 	)
 	pre len s.#1 = MAX_WHEELS-1 
@@ -292,7 +294,7 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 						)
 			)
 		);
-		return rot; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
+		return placementrotations; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
 	)
 	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
 		and len s.#2 = MAX_WHEELS -- not sure if needed, safe invariant already covers this
@@ -303,7 +305,6 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 
 CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 	(
-		--dcl placementsafe: Safe := s;
 		dcl placementow: Overlay := s.#1;
 		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
@@ -319,7 +320,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 							)
 						else(
 							placementow(i) := TurnOW(placementow(i)); -- placement overlay is updated
-
+							placementrotations(i) := j;
 							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
 								then(
 									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
@@ -348,7 +349,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 								)
 						)
 					)
-			)
+			);
 		);
 		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
 	)
@@ -368,7 +369,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		SafeToCombinationOperation(GOOD_SAFE);
 	);
 
-	/*Solutioning(s: Safe) ==
+	Solutioning(s: Safe) ==
 	(
 		dcl rot: Rotations := CheckAndReturn(s, [1,1,1]);
 
@@ -378,7 +379,7 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		)
 		else
 			print("No possible solutions for this safe");
-	) */
+	) 
 
 	/* BRING HOME MACHINE TO THE PRACTICAL, ASK WHY NO ERRORS SHOWN WHEN ERRORS WERE PRESENT ON CLUSTER MACHINES??
 						ASK ABOUT "NO SUCH MODULE AS IO" */
