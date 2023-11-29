@@ -276,9 +276,6 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 						)
 					else
 						(
-							--if i = 1
-							--then
-							--if i=1 fix to do. note maybe just come back to ow i+1 since this will never go on first overwheel
 							placementow(i) := TurnOW(placementow(i));
 							placementws(i-1) := Turn(placementws(i-1));
 							placementrotations(i) := j+1;
@@ -286,14 +283,14 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations == -- check
 			);
 		);
 		return rot; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
-	);
+	)
 	--Need to ask about these pre conditions failing. Even though when debugging they meet the requirements.
-	/*pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
+	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
 		and len s.#2 = MAX_WHEELS -- not sure if needed, safe invariant already covers this
 		and forall x in set {1,...,MAX_WHEELS-1} & len s.#1(x) = MAX_SPOKES
 		and forall z in set {1,...,MAX_WHEELS} & len s.#2(z) = MAX_SPOKES
 		and n <= MAX_WHEELS-2
-		and forall l in set {1,...,MAX_WHEELS-1} & rot(l) <= 16;*/
+		and forall l in set {1,...,MAX_WHEELS-1} & rot(l) <= 16;
 		
 
 CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
@@ -335,10 +332,19 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 							placementws(i-1) := Turn(placementws(i-1));
 							placementrotations(i) := j+1;
 							--checks through following possible combinations
-							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
-								then(
-									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
-									return placementrotations;
+							if i <> MAX_WHEELS-1 -- if not last wheel, then checks through possible combinations.
+							then(
+								if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
+									then(
+										placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
+										return placementrotations;
+									)
+							)
+							else -- if last wheel and overwheel duo, only turns the last duo ()
+								(
+									placementow(i) := TurnOW(placementow(i));
+									placementws(i-1) := Turn(placementws(i-1));
+									placementrotations(i) := j+1;
 								)
 						)
 					)
