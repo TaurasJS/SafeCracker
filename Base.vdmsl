@@ -3,7 +3,7 @@ imports from IO operations println
 exports all
 definitions 
 
---All changes done by me (student) will have a comment indicating the change.
+--All changes done by me, (student), will have a comment indicating the change.
 types 
 
 Id = token;
@@ -14,10 +14,12 @@ ValueMap = map Id to ScalarValue;
 
 ScalarType = <IntTp> | <BoolTp> | <StrTp>; -- added StrTp (student)
 
-ScalarValue = int | bool | seq of char; -- added seq of char (student)
+ScalarValue = int | bool | string; -- added seq of char (student)
 
 Program :: vars : TypeMap
 		   body : Stmts;
+
+string = seq of char; -- added string (student)
 
 Stmts = seq of Stmt;
 
@@ -59,7 +61,6 @@ TextExpr :: opd1 : Expr
 			opd2 : Expr
 			;
 
--- ASK DURING LECTURE ABOUT CHEATSHEET. CHEATSHEET SAYS  "abc" = ['a', 'b', 'c']. Is that automatically true?
 -- meaning, is it automatically assigned as seq of char?
 
 ---- extensions
@@ -195,9 +196,18 @@ c_tp(e, tpm) ==
 		(is_RelExpr(e)) 	-> c_tp_RExpr(e, tpm),
 		(is_Id(e))			-> c_tp_Id(e, tpm),
 		(is_ScalarValue(e)) -> c_tp_ScalarValue(e),
-		--(is_TextExpr(e))    -> c_tp_TextExpr(e),    --added line (student)
+		(is_TextExpr(e))    -> c_tp_TextExpr(e, tpm),    --added line (student) TODO create c_tp_TextExpr(e).
 		others				-> <Error>
 	end;
+
+
+--added c_tp_TextExpr (student)
+c_tp_TextExpr: TextExpr * TypeMap -> (ScalarType | <Error>)
+c_tp_TextExpr(mk_TextExpr(op1, -, op2), tpm) == 
+	if (c_tp(op1, tpm) = <StrTp> and c_tp(op2, tpm) = <StrTp>)
+	then <StrTp>
+	else <Error>;
+
  
 c_tp_AExpr: ArithExpr * TypeMap -> (ScalarType | <Error>)
 c_tp_AExpr(mk_ArithExpr(op1, -, op2), tpm) ==
@@ -209,8 +219,8 @@ c_tp_RExpr: RelExpr * TypeMap -> (ScalarType | <Error>)
 c_tp_RExpr(mk_RelExpr(op1, -, op2), tpm) ==
 	if (c_tp(op1, tpm) = <IntTp> and c_tp(op2, tpm) = <IntTp>)
 	then <BoolTp>
-	/*else if (c_tp(op1, tpm) = <StrTp> and c_tp(op2, tpm) = <StrTP>) --added else if (student)
-	then <StrTp> */
+	else if (c_tp(op1, tpm) = <StrTp> and c_tp(op2, tpm) = <StrTp>) --added else if (student)
+	then <BoolTp>
 	else <Error>;
 
 c_tp_Id: Id * TypeMap -> (ScalarType | <Error>)
@@ -225,7 +235,7 @@ c_tp_ScalarValue(v) ==
 	cases true:
 		(is_int(v))		-> <IntTp>,
 		(is_bool(v)) 	-> <BoolTp>,
-		--(is_seq_of_char(v))  -> <StrTp>,
+		(is_string(v))  -> <StrTp>,  -- added line (student)
 		others			-> <Error>
 	end;
 
