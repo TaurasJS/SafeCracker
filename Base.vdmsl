@@ -14,7 +14,7 @@ ValueMap = map Id to ScalarValue;
 
 ScalarType = <IntTp> | <BoolTp> | <StrTp>; -- added StrTp (student)
 
-ScalarValue = int | bool | string; -- added seq of char (student)
+ScalarValue = int | bool | string; -- added string (student)
 
 Program :: vars : TypeMap
 		   body : Stmts;
@@ -50,14 +50,14 @@ ArithExpr :: opd1 	: Expr
 			 ;
 				
 RelExpr :: opd1    : Expr
-		   operator: <EQUALS> | <NOTEQUALS> | <GT>
+		   operator: <EQUALS> | <NOTEQUALS> | <GT> | <IN> -- added IN here but it will be used for string operations (student)
 		   opd2	   : Expr
   		   --inv mk_RelExpr(opd1, -, opd2) == (is_RelExpr(opd1) and is_RelExpr(opd2))
   		   ;
 
 -- Created TextExpr (student)
 TextExpr :: opd1 : Expr
-			operator: <IN> | <ADD>
+			operator: <ADD>
 			opd2 : Expr
 			;
 
@@ -196,7 +196,7 @@ c_tp(e, tpm) ==
 		(is_RelExpr(e)) 	-> c_tp_RExpr(e, tpm),
 		(is_Id(e))			-> c_tp_Id(e, tpm),
 		(is_ScalarValue(e)) -> c_tp_ScalarValue(e),
-		(is_TextExpr(e))    -> c_tp_TextExpr(e, tpm),    --added line (student) TODO create c_tp_TextExpr(e).
+		(is_TextExpr(e))    -> c_tp_TextExpr(e, tpm),    --added line (student).
 		others				-> <Error>
 	end;
 
@@ -219,7 +219,7 @@ c_tp_RExpr: RelExpr * TypeMap -> (ScalarType | <Error>)
 c_tp_RExpr(mk_RelExpr(op1, -, op2), tpm) ==
 	if (c_tp(op1, tpm) = <IntTp> and c_tp(op2, tpm) = <IntTp>)
 	then <BoolTp>
-	else if (c_tp(op1, tpm) = <StrTp> and c_tp(op2, tpm) = <StrTp>) --added else if (student)
+	else if (c_tp(op1, tpm) = <StrTp> and c_tp(op2, tpm) = <StrTp>) --added else if so could use <IN> (student)
 	then <BoolTp>
 	else <Error>;
 
@@ -229,7 +229,6 @@ c_tp_Id(id, tpm) ==
 	then tpm(id)
 	else <Error>;
 
--- ASK WHERE is_int and is_bool functions are from? Do I need to create is_seq_of_char ?
 c_tp_ScalarValue: ScalarValue -> (ScalarType | <Error>)
 c_tp_ScalarValue(v) ==
 	cases true:
@@ -323,6 +322,7 @@ eval_expr(e, sigma) ==
 	cases true:
 		(is_ArithExpr(e))	-> eval_AExpr(e, sigma),
 		(is_RelExpr(e))		-> eval_RExpr(e, sigma),
+		(is_TextExpr(e))    -> eval_Texpr(e, sigma), -- Added line (student)
 		(is_Id(e))			-> lookup_Id(e, sigma),
 		(is_ScalarValue(e)) -> e,
 		others				-> false
@@ -348,6 +348,7 @@ eval_RExpr(mk_RelExpr(op1, opt, op2), sigma) ==
 			cases opt:
 				<EQUALS>	->     (v1 = v2),
 				<NOTEQUALS> -> not (v1 = v2),
+				<IN>        ->   (isinstring(v1, v2)),
 				<GT>		-> v1 > v2
 			end
 --pre
@@ -355,6 +356,27 @@ eval_RExpr(mk_RelExpr(op1, opt, op2), sigma) ==
 --	is_int(eval_expr(op1, sigma)) and
 --	is_int(eval_expr(op2, sigma))
 ;
+
+
+eval_Texpr: TextExpr * ValueMap -> string
+eval_Texpr(mk_TextExpr(op1, opt, op2), sigma) ==
+	let v1 = eval_expr(op1, sigma) in
+		let v2 = eval_expr(op2, sigma) in
+			cases opt:
+				<ADD>    ->   (v1 ^ v2)
+			end
+
+;
+
+--Added this function (student)
+isinstring: string * string -> bool
+isinstring(str1, str2) ==
+	let setstr1: set of char = elems str1,
+		setstr2: set of char = elems str2
+	in
+	setstr2 subset setstr1
+pre card elems str2 <= card elems str1;
+
 
 lookup_Id: Id * ValueMap -> ScalarValue
 lookup_Id(id, sigma) ==
