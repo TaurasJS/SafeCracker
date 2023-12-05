@@ -77,8 +77,6 @@ types
 	inv r == len r = MAX_WHEELS-1; -- last two connected wheels do not rotate since their rotation would not change the result.
 
 values
-	--GOOD_SAFE.#1(1) = 				[10, <Empty>, 2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>],
-
 	GOOD_SAFE: Safe = mk_(
 			[
 				--INNER_OVERLAy
@@ -99,18 +97,18 @@ values
 				[27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10]
 			]
 		);
-		CHECKING_SAFE: Safe = mk_( -- GOOD_SAFE solution, used for looking where algorithm fails
-					[
-						[2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>, 10, <Empty>], --[3]
-						[<Empty>, 7, <Empty>, 5, <Empty>, 27, <Empty>, 1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24], --[10]
-						[6, <Empty>, 4, <Empty>, 5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>] -- [13]
-					],
-					[
-						[10, 13, 1, 6, 8, 10, 24, 10, 1, 10, 12, 10, 10, 3, 17, 3], -- [10]
-						[5, 19, 4, 3, 15, 13, 17, 10, 2, 20, 15, 6, 2, 10, 10, 17],
-						[5, 9, 10, 2, 6, 1, 27, 10, 10, 6, 6, 9, 3, 3, 8, 3],
-						[27, 11, 20, 27, 3, 2, 3, 19, 23, 2, 10, 15, 13, 10, 19, 10]
-					]
+		CHECKING_SAFE: Safe = mk_( -- GOOD_SAFE (after checking is impossible to exist, ask during practical)
+		[
+		[2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>, 10, <Empty>], --[3]
+		[<Empty>, 7, <Empty>, 5, <Empty>, 27, <Empty>, 1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24], --[10]
+		[6, <Empty>, 4, <Empty>, 5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>] -- [3]
+		],
+		[
+		[10, 13, 1, 6, 8, 10, 24, 10, 1, 10, 12, 10, 10, 3, 17, 3], -- [10]
+		[5, 19, 4, 3, 15, 13, 17, 10, 2, 20, 15, 6, 2, 10, 10, 17], -- [3]
+		[5, 9, 10, 2, 6, 1, 27, 10, 10, 6, 6, 9, 3, 3, 8, 3],
+		[27, 11, 20, 27, 3, 2, 3, 19, 23, 2, 10, 15, 13, 10, 19, 10]
+		]
 	);
 
 	TESTING_SAFE: Safe = mk_( -- should return [1,1,1]
@@ -140,6 +138,15 @@ values
 				[5,  9, 10,  2,  6,  1, 27, 10, 10,  6,  6,  9,  3,  3,  8,  3],
 				--OUTER
 				[27, 11, 20, 27,  3,  2,  3, 19, 23,  2, 10, 15, 13, 10, 19, 10]
+			]
+		);
+
+		GOOD_COMBINATION: Combination = (
+			[
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 			]
 		);
 
@@ -279,34 +286,50 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations ==
 		dcl placementow: Overlay := s.#1;
 		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
-
+		--print(placementrotations(1));
 		for i = n+1 to MAX_WHEELS-2 by 1 do
 		(
-			for j = 1 to MAX_SPOKES-1 by 1 do
+			for j = 1 to MAX_SPOKES by 1 do
 			(
-				-- if finds, returns rotations and loop breaks.
-				if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true
-					then(
-						return placementrotations;
-						)
-					else -- if viable rotation is not found, turns upper duo (wheel and overwheel) again once
-						(
-							if i <= MAX_WHEELS-3
+				if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
+								then(
+									return placementrotations;
+								)
+					else(
+						if j <> MAX_SPOKES then(
+						placementrotations(i) := j+1)
+						else(placementrotations(i) := 1);
+						placementow(i) := TurnOW(placementow(i));
+						placementws(i-1) := Turn(placementws(i-1));
+						
+
+						if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
 							then(
-								 if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
-								 	then (
-										return placementrotations;
-									)
+								return placementrotations;
+							);
+
+						for k = 1 to MAX_SPOKES by 1 do
+						(
+							if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
+							then(
+								return placementrotations;
 							)else
-							(
-							placementow(i) := TurnOW(placementow(i));
-							placementws(i-1) := Turn(placementws(i-1));
-							placementrotations(i) := j+1;
+								(
+									if k <> MAX_SPOKES then(
+									placementrotations(i+1) := k+1)
+									else(placementrotations(i+1) := 1);
+									placementow(i+1) := TurnOW(placementow(i+1));
+									placementws(i) := Turn(placementws(i));
+								);
+							if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
+							then(
+								return placementrotations
 							)
 						)
-			);
+					);
+				);
 		);
-		return rot; -- returns unchanged roation if earlier loop does not return a changed (placement) rotation.
+		return rot;
 	)
 	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
 		and len s.#2 = MAX_WHEELS -- not sure if needed, safe invariant already covers this
@@ -322,26 +345,24 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 		dcl placementws: Wheels := s.#2;
 		dcl placementrotations: Rotations := rot;
 
-		for i = 1 to MAX_WHEELS-1 by 1 do
-		(
 			for j = 1 to MAX_SPOKES-1 by 1 do(
-				if i = 1 --if beggining (begins from center overwheel so only overwheel is turned)
-					then(
-						if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true -- if initial value is solution, returns rotation and loop breaks.
+				--print(placementrotations);
+				--print("----\n");
+						if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if initial value is solution, returns rotation and loop breaks.
 						then(
 							return placementrotations;
 							)
 						else(
-							placementow(i) := TurnOW(placementow(i)); -- placement overlay is updated
-							placementrotations(i) := j+1;
-							if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
+							placementow(1) := TurnOW(placementow(1)); -- placement overlay is updated
+							placementrotations(1) := j+1;
+							if CheckThroughFollowing(mk_(placementow, placementws), 1, placementrotations) <> placementrotations
 								then(
-									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
+									placementrotations := CheckThroughFollowing(mk_(placementow, placementws), 1, placementrotations);
 									return placementrotations;
 								)
 						)
-					)
-				else -- if not first wheel (not a single overwheel turned but both)
+					);
+				/*else -- if not first wheel (not a single overwheel turned but both)
 					(
 						if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true --checks starting value
 						then
@@ -363,16 +384,8 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 										return placementrotations;
 									)
 							)
-							else -- if last wheel and overwheel duo, only turns the last duo ()
-								(
-									placementow(i) := TurnOW(placementow(i));
-									placementws(i-1) := Turn(placementws(i-1));
-									placementrotations(i) := j+1;
-								)
 						)
-					)
-			);
-		);
+					)*/
 		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
 	)
 	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
@@ -388,7 +401,9 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 
 	Try() r: bool == -- used for testing out operations
 	(
-		check_values(SafeToCombinationOperation(TESTING_SAFE));
+		dcl tiesa: bool := false;
+		tiesa := check_values(SafeToCombinationOperation(GOOD_SAFE));
+		return tiesa;
 	);
 
 	Solutioning() ==
