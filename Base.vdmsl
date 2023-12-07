@@ -8,6 +8,10 @@ types
 
 Id = token;
 
+-- added Ids (student)
+Ids = seq of Id
+inv ids == len ids <= 2; -- added this line (student)
+
 TypeMap = map Id to ScalarType;
 
 ValueMap = map Id to ScalarValue;
@@ -25,8 +29,8 @@ Stmts = seq of Stmt;
 
 Stmt = Assign | If | While;
 
-Assign :: lhs : Id
-		  rhs : Expr;
+Assign :: lhs : Ids --changed Id to Ids (student)
+		  rhs : Exprs; -- changed Expr to Exprs (student)
 
 If :: test : Expr
 	  th   : Stmts
@@ -41,7 +45,11 @@ While :: test : Expr
 		 --inv mk_While(test, -) == (is_RelExpr(test))
 		 ;
 
-Expr = ArithExpr | RelExpr | TextExpr | Id | ScalarValue ; -- added TextExpr (student)
+Expr = ArithExpr | RelExpr | TextExpr | Id | ScalarValue; -- added TextExpr (student)
+
+-- added Exprs (student)
+Exprs = seq of Expr
+inv exprs == len exprs <=2; 
 
 ArithExpr :: opd1 	: Expr
 			 oprator: <PLUS> | <MINUS>
@@ -90,7 +98,7 @@ values
 	--		fi
 	--
 	-- loads of type errors
-	PROG2: Program = mk_Program({ i |-> <IntTp>, j |-> <IntTp>, b |-> <BoolTp> }, 
+	/*PROG2: Program = mk_Program({ i |-> <IntTp>, j |-> <IntTp>, b |-> <BoolTp> }, 
 								[
 									mk_Assign(j, b),
 									mk_Assign(i, mk_ArithExpr(b, <PLUS>, 1)),
@@ -107,7 +115,7 @@ values
 									mk_If(mk_RelExpr(42, <EQUALS>, i), 
 										  [ mk_Assign(i, 10) ],
 										  [ mk_Assign(b, false) ])
-								]);
+								]);*/
     -- PROG3:
 	-- program
 	--  int i, j;
@@ -133,7 +141,7 @@ values
 	--			fi
 	--		do 
 	--  fi
-	PUZZLE: Program = mk_Program({ i |-> <IntTp>, j |-> <IntTp> },
+	/*PUZZLE: Program = mk_Program({ i |-> <IntTp>, j |-> <IntTp> },
 								[
 									mk_Assign(i, 20),
 									mk_Assign(j, 12),
@@ -146,7 +154,7 @@ values
 												   [mk_Assign(j, mk_ArithExpr(j, <MINUS>, i))]) 
 											])
 										])
-								]);
+								]);*/
 
 
 functions 
@@ -173,10 +181,21 @@ wf_Stmt(s, tpm) ==
 		others		 	-> false
 	end;
 
+--Changed this function (Student)
 wf_Assign: Assign * TypeMap -> bool
-wf_Assign(mk_Assign(lhs, rhs), tpm) == 
-	lhs in set dom tpm and 
-	c_tp(rhs, tpm) = tpm(lhs);
+wf_Assign(mk_Assign(lhs, rhs), tpm) ==
+	if len lhs <> 1
+	then(
+		hd lhs in set dom tpm and
+		c_tp(hd rhs, tpm) = tpm(hd lhs) and
+		wf_Assign(mk_Assign(tl lhs, tl rhs), tpm)
+	)
+	else
+	(
+		lhs(1) in set dom tpm and 
+		c_tp(rhs(1), tpm) = tpm(lhs(1))
+	);
+	
 
 wf_If: If * TypeMap -> bool
 wf_If(mk_If(test, th, el), tpm) ==
@@ -285,8 +304,13 @@ exec_stmt(s, sigma) ==
 
 exec_Assign: Assign * ValueMap -> ValueMap
 exec_Assign(mk_Assign(lhs, rhs), sigma) ==
-	let v= eval_expr(rhs, sigma) in
-		sigma ++ { lhs |-> v };
+	let v= eval_expr(hd rhs, sigma) in
+	if len lhs <> 1
+	then(
+		exec_Assign(mk_Assign(tl lhs, tl rhs), sigma)
+	)
+	else 
+		sigma ++ { hd lhs |-> v };
 
 exec_If: If * ValueMap -> ValueMap
 exec_If(mk_If(test, th, el), sigma) ==

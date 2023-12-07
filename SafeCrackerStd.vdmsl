@@ -99,9 +99,9 @@ values
 		);
 		CHECKING_SAFE: Safe = mk_( -- GOOD_SAFE (after checking is impossible to exist, ask during practical)
 		[
+		[6, <Empty>, 4, <Empty>, 5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>], -- [13]
 		[2, <Empty>, 12, <Empty>, 17, <Empty>, 16, <Empty>, 9, <Empty>, 9, <Empty>, 15, <Empty>, 10, <Empty>], --[3]
-		[<Empty>, 7, <Empty>, 5, <Empty>, 27, <Empty>, 1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24], --[10]
-		[6, <Empty>, 4, <Empty>, 5, <Empty>, 4, <Empty>, 6, <Empty>, 6, <Empty>, 10, <Empty>, 1, <Empty>] -- [3]
+		[<Empty>, 7, <Empty>, 5, <Empty>, 27, <Empty>, 1, <Empty>, 22, <Empty>, 6, <Empty>, 24, <Empty>, 24] --[10]
 		],
 		[
 		[10, 13, 1, 6, 8, 10, 24, 10, 1, 10, 12, 10, 10, 3, 17, 3], -- [10]
@@ -144,8 +144,8 @@ values
 		GOOD_COMBINATION: Combination = (
 			[
 				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[5, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+				[15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
 				[10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
 			]
 		);
@@ -155,25 +155,6 @@ functions
 
 
 	--Following function sums up values of one collumn in a combination (Top down view of safe).
-	-- c - combination, v - current value starts at 0, cn - collumn number,
-	-- sn - sequence number, starts from 1
-	--Values for that collumn are summed up.
-	/*sum_collumn: Combination * nat * nat1 * nat1 -> nat1
-	sum_collumn(c, v, cn, sn) == 
-			if sn <> MAX_WHEELS
-			then(
-				sum_collumn(c, v+c(sn)(cn), cn, sn+1)
-			)
-			else
-				v+c(sn)(cn)
-		pre 
-			-- if you have constants then why parameter?
-			--v = 0 and 
-			cn <= MAX_SPOKES 
-			--and sn = 1 -- ask why cn condition doesnt pass.
-		measure 
-			MAX_WHEELS - sn; */
-
 	sum_collumn: Combination * Spokes * nat1 -> nat1 
 	sum_collumn(c, cn, sn) == 
 		if sn <> MAX_WHEELS then
@@ -188,15 +169,6 @@ functions
 	sum_collumn_start: Combination * Spokes -> nat1
 	sum_collumn_start(c, cn) == 
 		sum_collumn(c, cn, 1);
-
-	  /*sumelems: seq of nat -> nat
-	  sumelems(s) == 
-	  	if s <> [] then 
-			hd s + sumelems(tl s)
-		else 
-			0
-	measure 
-		len s;*/
 
 	--Checks if all collumn values in the current combination (top down reult of a specific rotation) equals to 40.
 	--Returns True if it is.
@@ -292,9 +264,9 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations ==
 			for j = 1 to MAX_SPOKES by 1 do
 			(
 				if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
-								then(
-									return placementrotations;
-								)
+					then(	
+						return placementrotations;
+						)
 					else(
 						if j <> MAX_SPOKES then(
 						placementrotations(i) := j+1)
@@ -323,7 +295,7 @@ CheckThroughFollowing(s: Safe, n: nat1, rot: Rotations) r: Rotations ==
 								);
 							if check_values(SafeToCombinationOperation(mk_(placementow, placementws))) = true -- if found
 							then(
-								return placementrotations
+								return placementrotations;
 							)
 						)
 					);
@@ -362,30 +334,6 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 								)
 						)
 					);
-				/*else -- if not first wheel (not a single overwheel turned but both)
-					(
-						if(check_values(SafeToCombinationOperation(mk_(placementow, placementws)))) = true --checks starting value
-						then
-						(
-							return placementrotations; -- returns if good unturned
-						)
-						else -- turns both wheel and overwheel
-						(
-							--placementsafe := TurnSafeOperation(placementsafe, i);
-							placementow(i) := TurnOW(placementow(i));
-							placementws(i-1) := Turn(placementws(i-1));
-							placementrotations(i) := j+1;
-							--checks through following possible combinations
-							if i <> MAX_WHEELS-1 -- if not last wheel, then checks through possible combinations.
-							then(
-								if CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations) <> placementrotations
-									then(
-										placementrotations := CheckThroughFollowing(mk_(placementow, placementws), i, placementrotations);
-										return placementrotations;
-									)
-							)
-						)
-					)*/
 		return [0,0,0]; -- Returns zeroes if no good combination was found. (No solution found)
 	)
 	pre len s.#1 = MAX_WHEELS-1 -- not sure if needed, safe invariant already covers this
@@ -397,13 +345,6 @@ CheckAndReturn(s: Safe, rot: Rotations) r: Rotations ==
 	Check() r: Rotations ==
 	(
 		return CheckAndReturn(GOOD_SAFE, [1,1,1]);
-	);
-
-	Try() r: bool == -- used for testing out operations
-	(
-		dcl tiesa: bool := false;
-		tiesa := check_values(SafeToCombinationOperation(GOOD_SAFE));
-		return tiesa;
 	);
 
 	Solutioning() ==
