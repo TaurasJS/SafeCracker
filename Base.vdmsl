@@ -478,7 +478,7 @@ sem_prog(mk_Program(vars, body)) ==
 sem_sl: Stmts * ValueMap ==> ValueMap
 */
 
-TestWF : Program ==> ()
+/*TestWF : Program ==> ()
 TestWF(p) ==
 	(
 		IO`println("\n\n Test well-formedness functions\n");
@@ -524,6 +524,6 @@ TestExec(p) ==
 
 	
 		IO`println("\n------------ FINISHED ------------\n");
-	);
+	);*/
 
 end Base
